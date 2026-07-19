@@ -72,8 +72,10 @@ frontend/
 
 ## コーディング方針
 
-- コンポーネント・関数名はPascalCase/camelCase、TypeScriptの型は極力`openapi.yaml`のスキーマ名（`Company`・`FinancialRecord`等）に合わせる
+- コンポーネント・関数名はPascalCase/camelCase、TypeScriptの型は極力`openapi.yaml`のスキーマ名（`Company`・`FinancialRecord`等）に合わせる。`any`は使わず明示的な型を付ける
+- コンポーネント・関数・変数の名前は、そのユースケースや機能が読んで分かる名前にする（`data`・`temp`のような汎用名は避け、`formatYenToOku`のように「何をするか」が伝わる名前にする）
 - 金額の円→億円変換、兆円/億円の表示切り替え（SCR-003-07〜13）はユーティリティ関数として`components`外に切り出し、テスト可能な形にしておく（将来テスト導入時に備える）
+- 日付・会計年度の表記は[date_format_policy.md](date_format_policy.md)に従う（`fiscal_year`は`period_end`から動的生成せずAPIの値をそのまま表示する等）
 - コメントは「WHY」のみ。JSXの構造で「WHAT」が伝わるようにする
 
 ---

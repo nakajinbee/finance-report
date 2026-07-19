@@ -1,0 +1,43 @@
+Generic single-database configuration.
+
+---
+
+## このプロジェクトでのAlembicの使い方
+
+方針の詳細は `docs/development/backend_implementation_policy.md` を参照。要点のみここに記す。
+
+### 手書きDDL方式（autogenerateは使わない）
+
+- `env.py` の `target_metadata` は意図的に `None` のまま。`backend/database.py` の
+  SQLAlchemyモデルとは紐付けていない
+- そのため `alembic revision --autogenerate` は使わない。新しいマイグレーションを作るときは
+  必ず空のリビジョンから始め、`upgrade()` / `downgrade()` 内に `op.execute()` で
+  生のDDL（`CREATE TABLE` / `ALTER TABLE` 等）を直接書く（Flywayのバージョン管理された
+  SQLファイルに近い運用）
+- `backend/database.py` のORMモデルはクエリ用。DDLとは別物として管理しており、
+  スキーマを変更したら**両方**を手動で更新すること（片方だけ直して食い違う事故に注意）
+
+### 接続先はalembic.iniではなく.envから読む
+
+- `alembic.ini` の `sqlalchemy.url` はダミー値のまま残っている（コミット対象なので
+  秘密情報は書かない）
+- 実際の接続先は `env.py` が起動時に `.env` の `DATABASE_URL` を読み込んで上書きする
+
+### よく使うコマンド
+
+```bash
+# 新しいマイグレーションを追加（空のリビジョンを生成 → 手動でDDLを書く）
+alembic revision -m "変更内容の説明"
+
+# 最新状態まで適用
+alembic upgrade head
+
+# 1つ前のマイグレーションまで戻す
+alembic downgrade -1
+
+# 全部ロールバック（テーブルが空の状態に戻る）
+alembic downgrade base
+
+# 適用履歴の確認
+alembic history
+```

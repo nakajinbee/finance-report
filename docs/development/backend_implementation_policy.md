@@ -28,20 +28,45 @@
 
 ---
 
-## ディレクトリ構成（`cycle1_design.md`準拠）
+## ディレクトリ構成
+
+`cycle1_design.md`の当初案（フラット構成）から、`docs/design/api/`のEDN/COMグルーピング
+（`api_list.md`参照）にコード構造を合わせる形で具体化した。
 
 ```
 backend/
-├── main.py           # FastAPIエントリポイント・ルーティング（openapi.yamlのAPI-*を実装）
-├── edinet.py          # EDINET APIクライアント（書類一覧API／書類取得API）
-├── xbrl_parser.py      # CSVから要素IDを抜き出すパーサー
-├── database.py         # SQLAlchemyエンジン・セッション・ORMモデル（TBL-001/002）
-├── alembic/            # マイグレーション（alembic init で生成）
+├── main.py                # FastAPIインスタンス生成・ルーター登録のみ（薄く保つ）
+├── routers/
+│   ├── edinet.py            # API-EDN-001/002（openapi.yaml paths/edinet/ に対応）
+│   └── companies.py         # API-COM-001/002（openapi.yaml paths/com/ に対応）
+├── schemas.py               # Pydanticモデル（openapi.yaml components/schemas/ をそのまま型として定義）
+├── edinet_client.py          # EDINET外部APIとの通信専用（memo/リクルートデータ取得メモ.md の①②API）
+├── xbrl_parser.py            # CSVから要素IDを抜き出すパーサー
+├── database.py                # SQLAlchemyエンジン・セッション・ORMモデル（TBL-001/002）
+├── alembic/                   # マイグレーション（alembic init で生成）
 ├── alembic.ini
 ├── requirements.txt
-├── financials.db        # SQLite実体（.gitignore対象）
-└── .env                 # 秘密情報（.gitignore対象）
+├── financials.db               # SQLite実体（.gitignore対象）
+└── .env                        # 秘密情報（.gitignore対象）
 ```
+
+`edinet.py`という名前は「EDINET外部APIとの通信モジュール」と「`routers/edinet.py`（社内APIルーティング）」で
+紛らわしくなるため、外部通信側は`edinet_client.py`という名前にする。
+
+---
+
+## 実装の思想（アーキテクチャ原則）
+
+1. **依存の向きは一方向**：`main.py` → `routers/` → (`edinet_client.py` / `xbrl_parser.py` / `database.py`)。
+   逆方向の依存（例：`database.py`が`routers`を知っている）は作らない
+2. **ルーターは薄く保つ**：`routers/`にはHTTPの入出力変換とエラーハンドリングだけを置き、
+   EDINET通信・パース・DB操作のロジックは各専用モジュールに置く
+3. **命名・型は設計書とトレーサブル**：関数名・変数名は`api_list.md`のAPI-ID、`openapi.yaml`のoperationId、
+   `schemas.py`の型名と一致させ、「このコードがどの設計書の要素か」を名前だけで辿れるようにする
+4. **エラーは例外で受け渡し、ルーターで変換**：`edinet_client.py`等はPython例外を投げるだけにし、
+   `routers/`側で`openapi.yaml`の`Error`スキーマ（`{error, message}`）に変換してレスポンスを返す（FR-03対応）
+5. **スコープ外の先取りをしない**：サイクル2（複数企業対応）を見越した抽象化（企業IDの汎用化等）は
+   今回行わない。`cycle1_requirements.md`のスコープ外リストどおり、リクルートHD固定のコードでよい
 
 ---
 
@@ -49,10 +74,11 @@ backend/
 
 設計ドキュメントの依存関係に沿って、下から積み上げる。
 
-1. **DB層**（`database.py` + Alembic）— テーブル定義を実装し、単体で作成・確認できる状態にする
-2. **EDINETクライアント**（`edinet.py`）— `memo/リクルートデータ取得メモ.md`で確定した①②APIの叩き方を実装
+1. **DB層**（`database.py` + Alembic）— テーブル定義を実装し、単体で作成・確認できる状態にする（完了）
+2. **EDINETクライアント**（`edinet_client.py`）— `memo/リクルートデータ取得メモ.md`で確定した①②APIの叩き方を実装
 3. **XBRLパーサー**（`xbrl_parser.py`）— 取得したCSVから5要素ID（`docs/requirements/cycle1_requirements.md` FR-01参照）を抽出しDBモデルにマッピング
-4. **API層**（`main.py`）— `docs/design/api/openapi.yaml`・`paths/edinet/`・`paths/com/`どおりのエンドポイントを実装
+4. **スキーマ層**（`schemas.py`）— `openapi.yaml`の`components/schemas/`をPydanticモデルとして定義
+5. **API層**（`routers/edinet.py` / `routers/companies.py` / `main.py`）— `docs/design/api/openapi.yaml`どおりのエンドポイントを実装
 
 各層は前段が動作確認できてから次に進む（DBが完成する前にAPI層を書き始めない）。
 
@@ -61,8 +87,10 @@ backend/
 ## コーディング方針
 
 - 型ヒントを必須とする（FastAPI/SQLAlchemy 2.0はいずれも型ヒント前提の設計）
+- 関数・クラス・変数の名前は、そのユースケースや機能が読んで分かる名前にする（`data`・`temp`・`process`のような汎用名は避け、`fetch_recruit_annual_reports`のように「何をするか」が伝わる名前にする）
 - コメントは「WHY」のみ。関数名・変数名で意図が伝わるようにする
 - カラム名・変数名は設計書（TBL-001/002、openapi.yamlのスキーマ）の命名にそのまま合わせる（変換の揺れを作らない）
+- 日付・時刻の型とフォーマットは[date_format_policy.md](date_format_policy.md)に従う（`date`と`datetime`を混在させない、UTC変換をしない等）
 - APIキーや接続文字列はコードにハードコードしない（`.env`経由のみ）
 - テストフレームワーク（pytest等）は現時点では未導入。ロジックが複雑化した段階（パーサーの分岐が増える等）で改めて検討する。現状は`docs/development/self_review_rule.md`に沿った手動確認で担保する
 
