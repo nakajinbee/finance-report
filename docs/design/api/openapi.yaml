@@ -1,0 +1,24 @@
+openapi: 3.0.3
+info:
+  title: 企業財務データ API
+  description: |
+    EDINET から取得した企業財務データを提供する API。
+
+    エンドポイントは以下の2グループに分かれる（詳細は `api_list.md` 参照）。
+    - `API-EDN-xxx`：EDINET にアクセスするAPI（`paths/edinet/`）
+    - `API-COM-xxx`：企業データ（DB）を参照するAPI（`paths/com/`）
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:8000
+    description: ローカル開発環境
+
+paths:
+  /api/download:
+    $ref: './paths/edinet/download.yaml'
+  /api/download/status:
+    $ref: './paths/edinet/download_status.yaml'
+  /api/companies:
+    $ref: './paths/com/companies.yaml'
+  /api/companies/{code}/financials:
+    $ref: './paths/com/companies_code_financials.yaml'

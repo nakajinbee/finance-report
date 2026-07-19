@@ -1,0 +1,31 @@
+post:
+  x-api-id: API-EDN-001
+  summary: 財務データのダウンロード開始
+  description: EDINET API からリクルートホールディングスの財務データを取得し DB に保存する。処理は非同期で実行され、進捗は /api/download/status で確認する。
+  operationId: startDownload
+  responses:
+    '202':
+      description: ダウンロード開始受付
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              status:
+                type: string
+                example: started
+              message:
+                type: string
+                example: ダウンロードを開始しました
+    '409':
+      description: すでにダウンロードが進行中
+      content:
+        application/json:
+          schema:
+            $ref: '../../components/schemas/Error.yaml'
+    '500':
+      description: サーバーエラー
+      content:
+        application/json:
+          schema:
+            $ref: '../../components/schemas/Error.yaml'

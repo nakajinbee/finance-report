@@ -1,0 +1,36 @@
+type: object
+properties:
+  fiscal_year:
+    type: string
+    description: 表示用会計年度
+    example: 2023年3月期
+  period_end:
+    type: string
+    format: date
+    description: 会計期間終了日
+    example: '2023-03-31'
+  revenue:
+    type: integer
+    nullable: true
+    description: 売上高（円）
+    example: 3279800000000
+  operating_profit:
+    type: integer
+    nullable: true
+    description: 営業利益（円）
+    example: 412300000000
+  net_profit:
+    type: integer
+    nullable: true
+    description: 純利益（円）
+    example: 296100000000
+  total_assets:
+    type: integer
+    nullable: true
+    description: 総資産（円）
+    example: 2987600000000
+  total_liabilities:
+    type: integer
+    nullable: true
+    description: 負債合計（円）
+    example: 1543200000000

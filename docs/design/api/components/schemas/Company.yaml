@@ -1,0 +1,26 @@
+type: object
+properties:
+  code:
+    type: string
+    description: 証券コード
+    example: '6098'
+  name:
+    type: string
+    description: 企業名
+    example: リクルートホールディングス
+  sector:
+    type: string
+    nullable: true
+    description: 業種（EDINETの業種区分）
+    example: サービス業
+  accounting_standard:
+    type: string
+    description: 会計基準
+    example: IFRS
+  periods:
+    type: array
+    description: データが存在する会計期間終了日の一覧
+    items:
+      type: string
+      format: date
+    example: ['2019-03-31', '2020-03-31', '2021-03-31', '2022-03-31', '2023-03-31']

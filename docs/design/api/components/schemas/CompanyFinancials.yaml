@@ -1,0 +1,8 @@
+type: object
+properties:
+  company:
+    $ref: './Company.yaml'
+  data:
+    type: array
+    items:
+      $ref: './FinancialRecord.yaml'

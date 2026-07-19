@@ -1,0 +1,10 @@
+type: object
+properties:
+  error:
+    type: string
+    description: エラーコード
+    example: EDINET_API_ERROR
+  message:
+    type: string
+    description: ユーザー向けメッセージ
+    example: データの取得に失敗しました

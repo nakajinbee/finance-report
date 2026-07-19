@@ -1,0 +1,23 @@
+# 環境変数・シークレット
+.env
+.env.*
+
+# SQLite DB
+*.db
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Node
+node_modules/
+dist/
+build/
+
+# EDINET 動作検証用の一時ダウンロードファイル
+docs/external/edinet/tmpdata/
+
+# OS
+.DS_Store

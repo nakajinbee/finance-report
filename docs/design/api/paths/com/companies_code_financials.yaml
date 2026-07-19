@@ -1,0 +1,32 @@
+get:
+  x-api-id: API-COM-002
+  summary: 企業財務データ取得
+  description: 指定した証券コードの企業の財務データを全期分返す。
+  operationId: getCompanyFinancials
+  parameters:
+    - name: code
+      in: path
+      required: true
+      description: 証券コード（例：6098）
+      schema:
+        type: string
+        example: '6098'
+  responses:
+    '200':
+      description: 財務データ
+      content:
+        application/json:
+          schema:
+            $ref: '../../components/schemas/CompanyFinancials.yaml'
+    '404':
+      description: 指定した企業が存在しない
+      content:
+        application/json:
+          schema:
+            $ref: '../../components/schemas/Error.yaml'
+    '500':
+      description: サーバーエラー
+      content:
+        application/json:
+          schema:
+            $ref: '../../components/schemas/Error.yaml'

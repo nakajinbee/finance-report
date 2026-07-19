@@ -1,0 +1,18 @@
+get:
+  x-api-id: API-EDN-002
+  summary: ダウンロード進捗確認
+  description: ダウンロードの進捗状況を返す。フロントエンドが1秒ごとにポーリングして取得ログを更新する。
+  operationId: getDownloadStatus
+  responses:
+    '200':
+      description: 進捗情報
+      content:
+        application/json:
+          schema:
+            $ref: '../../components/schemas/DownloadStatus.yaml'
+    '500':
+      description: サーバーエラー
+      content:
+        application/json:
+          schema:
+            $ref: '../../components/schemas/Error.yaml'

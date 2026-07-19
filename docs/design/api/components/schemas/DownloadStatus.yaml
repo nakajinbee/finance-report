@@ -1,0 +1,22 @@
+type: object
+properties:
+  status:
+    type: string
+    enum: [idle, in_progress, done, error]
+    description: idle=未開始, in_progress=取得中, done=完了, error=エラー
+    example: in_progress
+  logs:
+    type: array
+    description: 期ごとの取得ログ
+    items:
+      type: object
+      properties:
+        fiscal_year:
+          type: string
+          example: 2023年3月期
+        status:
+          type: string
+          enum: [pending, in_progress, done, error]
+        message:
+          type: string
+          example: 取得完了
