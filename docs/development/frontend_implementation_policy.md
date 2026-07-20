@@ -11,7 +11,7 @@
 |---|---|---|
 | ビルドツール | Vite | Create React Appは公式に非推奨化済み。React公式もViteを案内しており、3画面のみのSPAには十分 |
 | 言語 | TypeScript（設計書どおり） | 既に決定済み |
-| パッケージ管理 | npm | Node標準同梱。追加ツール（pnpm/yarn）は今回の規模では恩恵が薄いため見送り |
+| パッケージ管理 | **pnpm** | npmはサプライチェーン攻撃・脆弱性の懸念があるとの判断で見送り。pnpmは厳密な依存解決でフラットdependency問題が起きにくく、近年npmの代替として広く使われている |
 
 ---
 
@@ -46,15 +46,16 @@ frontend/
 │   │   └── ErrorMessage.tsx             # エラー表示
 │   ├── api/
 │   │   └── client.ts                    # fetchラッパー。api_list.mdのAPI-EDN-*/API-COM-*に対応する関数を定義
-│   └── index.css                        # Tailwindのエントリポイント
-├── tailwind.config.js
-├── postcss.config.js
-├── .eslintrc / eslint.config.js
+│   └── index.css                        # Tailwindのエントリポイント（@import "tailwindcss";）
+├── eslint.config.js
 ├── .prettierrc
-├── vite.config.ts
+├── vite.config.ts                        # @tailwindcss/vite プラグインを含む
 ├── tsconfig.json
 └── package.json
 ```
+
+Tailwind CSS 4系は`@tailwindcss/vite`プラグイン方式のため、`tailwind.config.js`・
+`postcss.config.js`は不要（`vite.config.ts`にプラグイン追加＋CSSに1行importするのみ）。
 
 ---
 
@@ -80,7 +81,9 @@ frontend/
 
 ---
 
-## 未決事項（実装中に必要になったら決める）
+## 解決済みの旧未決事項
 
-- 開発時のバックエンドAPIのモック方法（MSW導入 or Viteのproxy設定でバックエンドに直接つなぐか）
-- CORS：バックエンド側（`backend_implementation_policy.md`）の未決事項と対になる。Viteのdevサーバーのポート（デフォルト5173）を前提にバックエンド側のCORS許可オリジンを決める
+- **開発時のバックエンドAPIのモック方法**：モックは使わない。実際に`uvicorn main:app`を起動し、
+  フロントから`http://localhost:8000`へ直接HTTP接続する（プロジェクト全体の「実データ・実APIで検証する」方針に合わせた）
+- **CORS**：バックエンド側`main.py`で`http://localhost:5173`（Viteのデフォルトポート）を
+  許可済み（`backend_implementation_policy.md`参照）

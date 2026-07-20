@@ -67,6 +67,11 @@ EDINET API を利用して、リクルートホールディングスの会計情
 - J-GAAP / US GAAP 対応
 - 複数年の動的な期間選択
 - モバイル対応
+- **負債合計の内訳化（流動負債・固定負債）**：現状「負債合計」のみを1指標として保持しているが、
+  流動負債と固定負債を分けて保存・表示したいという要望あり。EDINET CSVには
+  `jpigp_cor:TotalCurrentLiabilitiesIFRS`（流動負債）が個別タグとして存在することを実機確認済み。
+  → この個別ニーズは、サイクル2で計画中の「EDINET報告データの網羅的なDB保存」
+  （[cycle2_requirements.md](cycle2_requirements.md) FR-04/FR-05）に含まれる形で解決する想定
 
 ---
 
