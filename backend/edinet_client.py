@@ -1,6 +1,7 @@
 import csv
 import io
 import os
+import re
 import time
 import zipfile
 from dataclasses import dataclass
@@ -153,15 +154,37 @@ class FilerInfo:
     name: str
     sector: str | None
     sec_code: str | None
+    fiscal_year_end_month: int | None
+    fiscal_year_end_day: int | None
 
 
-def fetch_filer_info(edinet_code: str) -> FilerInfo:
-    """EDINETコードリスト(EdinetcodeDlInfo.csv)をダウンロードし、
-    指定edinet_codeの提出者名・業種・証券コードを返す。
+_FISCAL_YEAR_END_PATTERN = re.compile(r"(\d+)月(\d+)日")
+
+_filer_info_cache: list[FilerInfo] | None = None
+
+
+def _parse_fiscal_year_end(raw: str) -> tuple[int | None, int | None]:
+    """EDINETコードリストの「決算日」列（例："3月31日"）をパースする
+
+    ファンド等、決算日が"－"で埋まっている行もあるため、パースできない場合は(None, None)。
+    """
+    match = _FISCAL_YEAR_END_PATTERN.match(raw)
+    if match is None:
+        return None, None
+    return int(match.group(1)), int(match.group(2))
+
+
+def _load_filer_info_cache() -> list[FilerInfo]:
+    """EDINETコードリスト(EdinetcodeDlInfo.csv)をダウンロード・パースし、プロセス起動中
+    メモリキャッシュする（NFR-05：検索のたびに再取得しない。プロセス再起動まで再取得しない）。
 
     このCSVはCP932(Shift-JIS)エンコードで、1行目はダウンロード実行日等のサマリ行、
     2行目がヘッダ行（実機確認済み）。
     """
+    global _filer_info_cache
+    if _filer_info_cache is not None:
+        return _filer_info_cache
+
     response = requests.get(FILER_INFO_URL, timeout=REQUEST_TIMEOUT_SECONDS)
     if response.status_code != 200:
         raise EdinetApiError(f"EDINETコードリストの取得に失敗しました: status={response.status_code}")
@@ -173,13 +196,65 @@ def fetch_filer_info(edinet_code: str) -> FilerInfo:
     data_lines = text.splitlines()[1:]  # 1行目のサマリ行をスキップ
     reader = csv.DictReader(data_lines)
 
+    filers = []
     for row in reader:
-        if row["ＥＤＩＮＥＴコード"] == edinet_code:
-            return FilerInfo(
-                edinet_code=edinet_code,
+        fiscal_year_end_month, fiscal_year_end_day = _parse_fiscal_year_end(row["決算日"])
+        filers.append(
+            FilerInfo(
+                edinet_code=row["ＥＤＩＮＥＴコード"],
                 name=row["提出者名"],
                 sector=row["提出者業種"] or None,
                 sec_code=row["証券コード"] or None,
+                fiscal_year_end_month=fiscal_year_end_month,
+                fiscal_year_end_day=fiscal_year_end_day,
             )
+        )
+
+    _filer_info_cache = filers
+    return _filer_info_cache
+
+
+def fetch_filer_info(edinet_code: str) -> FilerInfo:
+    """EDINETコードリストから指定edinet_codeの提出者情報を1件返す"""
+    for filer in _load_filer_info_cache():
+        if filer.edinet_code == edinet_code:
+            return filer
 
     raise EdinetDocumentNotFoundError(f"EDINETコードリストに edinet_code={edinet_code} が見つかりません")
+
+
+def search_filers(query: str, limit: int = 20) -> list[FilerInfo]:
+    """EDINETコードリストから企業名・証券コードの部分一致で検索する（FR-07）"""
+    query = query.strip()
+    if not query:
+        return []
+
+    matches = [
+        filer
+        for filer in _load_filer_info_cache()
+        if query in filer.name or (filer.sec_code is not None and query in filer.sec_code)
+    ]
+    return matches[:limit]
+
+
+def determine_latest_available_fiscal_year(today: date, fiscal_year_end_month: int, fiscal_year_end_day: int) -> int:
+    """直近で提出済みとみなせる決算年を、実行日と決算日を基準に動的に算出する（FR-09）
+
+    有価証券報告書は決算日から3ヶ月以内の提出が義務のため、「今年が決算年」の決算日+90日
+    （＝提出期限の目安）を過ぎていれば当年分は提出済みとみなせる。過ぎていなければ
+    前年分までが直近の提出済み分となる（memo/リクルートデータ取得メモ.md の3月決算固定
+    ロジックを任意の決算月日に一般化したもの。dateの加減算で年またぎも自動的に扱える）。
+    """
+    fiscal_year_end_this_year = date(today.year, fiscal_year_end_month, fiscal_year_end_day)
+    filing_deadline = fiscal_year_end_this_year + timedelta(days=90)
+    return today.year if today >= filing_deadline else today.year - 1
+
+
+def annual_report_search_center(fiscal_year_end_month: int, fiscal_year_end_day: int, target_year: int) -> date:
+    """target_year年の決算に対応する有価証券報告書の探索起点日を返す（FR-09）
+
+    提出期限は決算日から3ヶ月以内のため、決算日+90日を起点とする
+    （search_annual_reportのwindow_days=25とあわせて実務上の提出日ゆらぎを吸収する）。
+    """
+    fiscal_year_end = date(target_year, fiscal_year_end_month, fiscal_year_end_day)
+    return fiscal_year_end + timedelta(days=90)

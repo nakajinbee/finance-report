@@ -11,51 +11,25 @@ from database import Company, Fact, SessionLocal
 
 # SCR-001（ダウンロード画面、docs/design/screen/SCR-001_download.md）向けのAPI-EDN-*系エンドポイント。
 #
-# TODO(cycle2): docs/design/api/paths/edinet/ 配下（openapi.yaml）はサイクル2向けに改訂済みだが、
-# このファイルの実装はまだサイクル1のAPI仕様のまま（このコメントの下に個別箇所を明記）。
-# FR-04（全数値データ取り込み）・FR-06（会計基準の判定）は対応済み。
-# 残るFR-07（企業検索）・FR-09（決算日を使った動的探索）・FR-10（企業単位の排他制御）は
-# 次のステップで行う。
+# TODO(cycle2): FR-04（全数値データ取り込み）・FR-06（会計基準の判定）・FR-07（企業検索）・
+# FR-09（決算日を使った動的探索）・FR-10（企業単位の排他制御）・FR-11（再ダウンロード時の
+# スキップ）は対応済み。残るFR-12（年度範囲指定でのグラフ表示、routers/companies.py側）・
+# API-COM-003（キャッシュフロー）・API-COM-004（保存済みデータ確認）・フロントエンドは
+# 次のステップ以降で行う。
 router = APIRouter()
 
-# サイクル1はリクルートHD固定（docs/development/backend_implementation_policy.md
-# 「実装の思想」原則5：スコープ外の先取りをしない）。
-# EDINETの証券コード(secCode)は5桁だがDBのcodeは4桁（実機確認済み、末尾の"0"が異なる）。
-#
-# TODO(cycle2 FR-07): 企業検索（API-EDN-003 `GET /api/edinet/companies/search`）が未実装のため、
-# 引き続きリクルートHD固定。企業検索を実装したらこの定数群とダウンロード対象の決め打ちを撤廃する。
-RECRUIT_DB_CODE = "6098"
-RECRUIT_EDINET_SEC_CODE = "60980"
-RECRUIT_EDINET_CODE = "E07801"
-# 有価証券報告書の提出日探索の起点（3月決算・6月中旬提出が中心という実機検証結果に基づく）
-#
-# TODO(cycle2 FR-09、重要): cycle2_requirements.md FR-09で「探索起点日は企業の決算月から
-# 動的に算出する」と設計済み（EDINETコードリストの「決算日」列を使う。サイクル2セルフレビューで
-# 発覚した重要な抜け漏れ：3月決算でない企業の探索が正しく動かない問題への対応）。
-# このファイルはまだ対応しておらず、3月決算固定のまま（＝リクルートHD固定である現状の
-# RECRUIT_DB_CODE等と整合しているため当面は問題ないが、企業検索(FR-07)を実装する際は
-# 必ずこちらも直すこと）。
-ANNUAL_REPORT_SEARCH_MONTH = 6
-ANNUAL_REPORT_SEARCH_DAY = 20
+# 有価証券報告書の探索窓（前後日数）。デフォルトのedinet_client.search_annual_reportと同じ値。
+ANNUAL_REPORT_SEARCH_WINDOW_DAYS = 25
+# 過去に遡る最大年数（EDINET側の閲覧期間上限＝縦覧5年+延長5年、FR-09参照）
+MAX_LOOKBACK_YEARS = 10
 
-# TODO(cycle2 FR-10): 同時ダウンロード制御を企業単位にする設計（`company_code`をキーにした
-# 辞書で管理）だが、ここではサイクル1のままアプリ全体で単一の状態を持っている
-# （企業検索が未実装で対象企業が常に1社のため、実害はまだない）。
-_state = schemas.DownloadStatus(status=schemas.DownloadOverallStatus.IDLE, logs=[])
-_state_lock = threading.Lock()
-
-
-def get_last_five_fiscal_year_ends(today: date) -> list[int]:
-    """直近5期分の会計年度（3月期）を、実行日を基準に動的に算出する
-
-    3月決算・6月中旬〜下旬提出が前提のため、7月以降であれば当年の有価証券報告書は
-    提出済みとみなせる。6月以前であれば前年までが直近の提出済み分となる。
-
-    TODO(cycle2 FR-09): 本来は決算日から動的算出すべき
-    （上のANNUAL_REPORT_SEARCH_MONTH/DAYのコメント参照）。関数名・実装ともサイクル1のまま。
-    """
-    latest_year = today.year if today.month >= 7 else today.year - 1
-    return [latest_year - i for i in range(5)]
+# 企業ごとの進捗状態（FR-10：同時ダウンロード制御を企業単位にする）。
+# _meta_lockはこの辞書の読み書き（多重起動チェック＆初期化）のみを保護する軽量ロック。
+# 一度_statesにIN_PROGRESSとして登録された後の実処理はロック外で行うため、
+# 異なるcompany_codeは並行して処理できる（同一company_codeは_states[company_code].status
+# のチェックにより多重実行がブロックされる）。
+_states: dict[str, schemas.DownloadStatus] = {}
+_meta_lock = threading.Lock()
 
 
 def _upsert_company(session, company_code: str, name: str, sector: str | None, accounting_standard: str) -> None:
@@ -100,67 +74,108 @@ def _upsert_facts(
         fact.value = numeric_fact.value
 
 
-def run_download_job() -> None:
-    """EDINETから直近5期分の有価証券報告書を取得し、DBに保存する
+def _determine_target_fiscal_years(period: schemas.DownloadPeriod, latest_available_year: int) -> list[int]:
+    """period指定（全期間／年度範囲）から対象の決算年一覧を返す（新しい年から順）"""
+    if period.type == "all":
+        return [latest_available_year - i for i in range(MAX_LOOKBACK_YEARS)]
+    return list(range(period.to_year, period.from_year - 1, -1))
 
-    1件失敗しても残りの年度は続行し、1件以上成功していればstatus=doneとする
-    （docs/design/screen/items/SCR-001_items.md の状態判定ルールと同じ）。
+
+def _fact_exists_for_period(session, company_code: str, period_end: date) -> bool:
+    return (
+        session.query(Fact.id).filter_by(company_code=company_code, period_end=period_end).first() is not None
+    )
+
+
+def run_download_job(company_code: str, edinet_code: str, period: schemas.DownloadPeriod) -> None:
+    """指定企業の有価証券報告書をEDINETから取得し、DBに保存する（FR-07/FR-09）
+
+    同一企業・同一期間のデータが既にDBに存在する場合はEDINETへ再アクセスせずスキップする
+    （FR-11：EDINETへの不要なアクセスを減らす。訂正報告書の反映は自動検知しない設計であり、
+    反映が必要な場合はDBの該当データを手動削除してから再ダウンロードする運用とする）。
+    1件失敗しても残りの年度は続行し、1件以上成功（スキップも成功扱い）していれば
+    status=doneとする（docs/design/screen/items/SCR-001_items.md の状態判定ルールと同じ）。
     """
-    target_years = get_last_five_fiscal_year_ends(date.today())
-    _state.logs = [
-        schemas.DownloadLogEntry(
-            fiscal_year=f"{year}年3月期", status=schemas.DownloadLogStatus.PENDING, message="待機中"
-        )
-        for year in target_years
-    ]
+    state = _states[company_code]
 
     session = SessionLocal()
     try:
-        filer_info = edinet_client.fetch_filer_info(RECRUIT_EDINET_CODE)
-        # 会計基準はハードコードせず、実際のCSVのDEI要素から確定させる（最初の1期分で判定すれば
-        # 十分。同一企業が期によって会計基準を変えることは通常ないため）
-        first_year_document = edinet_client.search_annual_report(
-            RECRUIT_EDINET_SEC_CODE, date(target_years[0], ANNUAL_REPORT_SEARCH_MONTH, ANNUAL_REPORT_SEARCH_DAY)
-        )
-        first_year_csv_bytes = edinet_client.fetch_annual_report_csv(first_year_document["docID"])
-        accounting_standard = xbrl_parser.extract_accounting_standard(first_year_csv_bytes)
+        filer_info = edinet_client.fetch_filer_info(edinet_code)
+        if filer_info.sec_code is None or filer_info.fiscal_year_end_month is None or filer_info.fiscal_year_end_day is None:
+            state.status = schemas.DownloadOverallStatus.ERROR
+            state.logs = [
+                schemas.DownloadLogEntry(
+                    fiscal_year="-",
+                    status=schemas.DownloadLogStatus.ERROR,
+                    message="この提出者は証券コードまたは決算日が不明なため、ダウンロードできません",
+                )
+            ]
+            return
 
-        _upsert_company(session, RECRUIT_DB_CODE, filer_info.name, filer_info.sector, accounting_standard)
-        session.commit()
+        latest_available_year = edinet_client.determine_latest_available_fiscal_year(
+            date.today(), filer_info.fiscal_year_end_month, filer_info.fiscal_year_end_day
+        )
+        target_years = _determine_target_fiscal_years(period, latest_available_year)
+
+        state.logs = [
+            schemas.DownloadLogEntry(
+                fiscal_year=f"{year}年{filer_info.fiscal_year_end_month}月期",
+                status=schemas.DownloadLogStatus.PENDING,
+                message="待機中",
+            )
+            for year in target_years
+        ]
+
+        # 会計基準は原則EDINETのDEI要素から確定させるが、既に企業が保存済みならDBの値を使い、
+        # 無駄なEDINET通信を避ける（企業が既存でない場合のみ、最初に成功した書類から判定する）
+        existing_company = session.get(Company, company_code)
+        accounting_standard = existing_company.accounting_standard if existing_company is not None else None
 
         any_success = False
         for i, year in enumerate(target_years):
-            _state.logs[i].status = schemas.DownloadLogStatus.IN_PROGRESS
-            _state.logs[i].message = "取得中"
+            expected_period_end = date(year, filer_info.fiscal_year_end_month, filer_info.fiscal_year_end_day)
+
+            if _fact_exists_for_period(session, company_code, expected_period_end):
+                state.logs[i].status = schemas.DownloadLogStatus.SKIPPED
+                state.logs[i].message = "スキップ（既存データあり）"
+                any_success = True
+                continue
+
+            state.logs[i].status = schemas.DownloadLogStatus.IN_PROGRESS
+            state.logs[i].message = "取得中"
             try:
-                if year == target_years[0]:
-                    # 会計基準判定のために既に取得済み
-                    document, csv_bytes = first_year_document, first_year_csv_bytes
-                else:
-                    document = edinet_client.search_annual_report(
-                        RECRUIT_EDINET_SEC_CODE, date(year, ANNUAL_REPORT_SEARCH_MONTH, ANNUAL_REPORT_SEARCH_DAY)
-                    )
-                    csv_bytes = edinet_client.fetch_annual_report_csv(document["docID"])
+                center_date = edinet_client.annual_report_search_center(
+                    filer_info.fiscal_year_end_month, filer_info.fiscal_year_end_day, year
+                )
+                document = edinet_client.search_annual_report(
+                    filer_info.sec_code, center_date, window_days=ANNUAL_REPORT_SEARCH_WINDOW_DAYS
+                )
+                csv_bytes = edinet_client.fetch_annual_report_csv(document["docID"])
+
+                if accounting_standard is None:
+                    accounting_standard = xbrl_parser.extract_accounting_standard(csv_bytes)
+                    _upsert_company(session, company_code, filer_info.name, filer_info.sector, accounting_standard)
+                    session.commit()
 
                 facts = xbrl_parser.parse_numeric_facts(csv_bytes)
 
                 period_end = date.fromisoformat(document["periodEnd"])
-                _upsert_facts(session, RECRUIT_DB_CODE, document["docID"], document["docTypeCode"], period_end, facts)
+                _upsert_facts(session, company_code, document["docID"], document["docTypeCode"], period_end, facts)
                 session.commit()
 
-                _state.logs[i].status = schemas.DownloadLogStatus.DONE
-                _state.logs[i].message = "取得完了"
+                state.logs[i].status = schemas.DownloadLogStatus.DONE
+                state.logs[i].message = "取得完了"
                 any_success = True
             except Exception as e:
                 session.rollback()
-                _state.logs[i].status = schemas.DownloadLogStatus.ERROR
-                _state.logs[i].message = f"取得に失敗しました: {e}"
+                state.logs[i].status = schemas.DownloadLogStatus.ERROR
+                state.logs[i].message = f"取得に失敗しました: {e}"
 
-        _state.status = schemas.DownloadOverallStatus.DONE if any_success else schemas.DownloadOverallStatus.ERROR
+        state.status = schemas.DownloadOverallStatus.DONE if any_success else schemas.DownloadOverallStatus.ERROR
     except Exception as e:
         session.rollback()
-        _state.status = schemas.DownloadOverallStatus.ERROR
-        for log in _state.logs:
+        state.status = schemas.DownloadOverallStatus.ERROR
+        for log in state.logs:
             if log.status in (schemas.DownloadLogStatus.PENDING, schemas.DownloadLogStatus.IN_PROGRESS):
                 log.status = schemas.DownloadLogStatus.ERROR
                 log.message = f"取得に失敗しました: {e}"
@@ -169,34 +184,60 @@ def run_download_job() -> None:
 
 
 @router.post("/download", status_code=202)
-def start_download(background_tasks: BackgroundTasks):
-    """API-EDN-001: 財務データのダウンロード開始（SCR-001 データ取得ボタン）
+def start_download(request: schemas.DownloadRequest, background_tasks: BackgroundTasks):
+    """API-EDN-001: 財務データのダウンロード開始（SCR-001 データ取得ボタン）"""
+    if request.period.type == "range":
+        if request.period.from_year is None or request.period.to_year is None:
+            return JSONResponse(
+                status_code=400,
+                content=schemas.ErrorResponse(
+                    error="INVALID_PERIOD", message="期間指定にはfrom_year・to_yearの両方が必要です"
+                ).model_dump(),
+            )
+        if request.period.from_year > request.period.to_year:
+            return JSONResponse(
+                status_code=400,
+                content=schemas.ErrorResponse(
+                    error="INVALID_PERIOD", message="from_yearはto_year以前である必要があります"
+                ).model_dump(),
+            )
 
-    TODO(cycle2 FR-07/FR-09): docs/design/api/paths/edinet/download.yaml（サイクル2）は
-    リクエストボディにcompany_code・edinet_code・period（全期間／年度範囲）を要求する設計だが、
-    この実装はまだ無引数のサイクル1仕様のまま（リクルートHD・直近5期固定）。
-    """
-    with _state_lock:
-        if _state.status == schemas.DownloadOverallStatus.IN_PROGRESS:
+    with _meta_lock:
+        current = _states.get(request.company_code)
+        if current is not None and current.status == schemas.DownloadOverallStatus.IN_PROGRESS:
             return JSONResponse(
                 status_code=409,
                 content=schemas.ErrorResponse(
                     error="DOWNLOAD_IN_PROGRESS", message="すでにダウンロードが進行中です"
                 ).model_dump(),
             )
-        _state.status = schemas.DownloadOverallStatus.IN_PROGRESS
-        _state.logs = []
+        _states[request.company_code] = schemas.DownloadStatus(status=schemas.DownloadOverallStatus.IN_PROGRESS, logs=[])
 
-    background_tasks.add_task(run_download_job)
+    background_tasks.add_task(run_download_job, request.company_code, request.edinet_code, request.period)
     return {"status": "started", "message": "ダウンロードを開始しました"}
 
 
 @router.get("/download/status", response_model=schemas.DownloadStatus)
-def get_download_status():
-    """API-EDN-002: ダウンロード進捗確認（SCR-001 取得ログエリア）
+def get_download_status(company_code: str):
+    """API-EDN-002: ダウンロード進捗確認（SCR-001 取得ログエリア）"""
+    state = _states.get(company_code)
+    if state is None:
+        return JSONResponse(
+            status_code=404,
+            content=schemas.ErrorResponse(
+                error="DOWNLOAD_NOT_FOUND", message="指定company_codeのダウンロード履歴が存在しません"
+            ).model_dump(),
+        )
+    return state
 
-    TODO(cycle2 FR-10): docs/design/api/paths/edinet/download_status.yaml（サイクル2）は
-    company_codeクエリパラメータを必須とする設計（企業単位の進捗管理）だが、
-    この実装は無引数のまま単一の`_state`を返している。
-    """
-    return _state
+
+@router.get("/edinet/companies/search", response_model=list[schemas.EdinetCompanySearchResult])
+def search_edinet_companies(q: str):
+    """API-EDN-003: EDINET企業検索（SCR-001 企業検索ボックス、FR-07）"""
+    filers = edinet_client.search_filers(q)
+    return [
+        schemas.EdinetCompanySearchResult(
+            edinet_code=filer.edinet_code, name=filer.name, sec_code=filer.sec_code, sector=filer.sector
+        )
+        for filer in filers
+    ]

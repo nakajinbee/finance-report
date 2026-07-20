@@ -1,5 +1,6 @@
 from datetime import date
 from enum import Enum
+from typing import Literal
 
 from pydantic import BaseModel
 
@@ -48,6 +49,8 @@ class DownloadLogStatus(str, Enum):
     PENDING = "pending"
     IN_PROGRESS = "in_progress"
     DONE = "done"
+    SKIPPED = "skipped"
+    """既存データがあるためEDINETへの再アクセスをスキップした（FR-11）"""
     ERROR = "error"
 
 
@@ -62,6 +65,31 @@ class DownloadStatus(BaseModel):
 
     status: DownloadOverallStatus
     logs: list[DownloadLogEntry]
+
+
+class EdinetCompanySearchResult(BaseModel):
+    """docs/design/api/components/schemas/EdinetCompanySearchResult.yaml（FR-07）"""
+
+    edinet_code: str
+    name: str
+    sec_code: str | None = None
+    sector: str | None = None
+
+
+class DownloadPeriod(BaseModel):
+    """POST /api/download リクエストボディの period（FR-09）"""
+
+    type: Literal["all", "range"]
+    from_year: int | None = None
+    to_year: int | None = None
+
+
+class DownloadRequest(BaseModel):
+    """POST /api/download リクエストボディ（docs/design/api/paths/edinet/download.yaml）"""
+
+    company_code: str
+    edinet_code: str
+    period: DownloadPeriod
 
 
 class ErrorResponse(BaseModel):
