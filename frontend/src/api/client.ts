@@ -25,7 +25,26 @@ export type CompanyFinancials = {
   data: FinancialRecord[];
 };
 
-export type DownloadLogStatus = "pending" | "in_progress" | "done" | "error";
+export type CashFlowRecord = {
+  fiscal_year: string;
+  period_end: string;
+  operating_cash_flow: number | null;
+  investing_cash_flow: number | null;
+  financing_cash_flow: number | null;
+};
+
+export type FactRecord = {
+  element_id: string;
+  element_name: string | null;
+  doc_type_code: string;
+  period_end: string;
+  context_id: string;
+  consolidated_or_individual: string | null;
+  unit: string | null;
+  value: number;
+};
+
+export type DownloadLogStatus = "pending" | "in_progress" | "done" | "skipped" | "error";
 
 export type DownloadLogEntry = {
   fiscal_year: string;
@@ -38,6 +57,23 @@ export type DownloadOverallStatus = "idle" | "in_progress" | "done" | "error";
 export type DownloadStatus = {
   status: DownloadOverallStatus;
   logs: DownloadLogEntry[];
+};
+
+export type EdinetCompanySearchResult = {
+  edinet_code: string;
+  name: string;
+  sec_code: string | null;
+  sector: string | null;
+};
+
+export type DownloadPeriod =
+  | { type: "all" }
+  | { type: "range"; from_year: number; to_year: number };
+
+export type DownloadRequest = {
+  company_code: string;
+  edinet_code: string;
+  period: DownloadPeriod;
 };
 
 export type ErrorResponse = {
@@ -56,14 +92,34 @@ async function requestJson<T>(path: string, init?: RequestInit): Promise<ApiResu
   return { ok: true, data: body as T };
 }
 
+function buildQuery(params: Record<string, string | number | undefined>): string {
+  const search = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== undefined) {
+      search.set(key, String(value));
+    }
+  }
+  const query = search.toString();
+  return query ? `?${query}` : "";
+}
+
 // API-EDN-001: 財務データのダウンロード開始
-export function startDownload(): Promise<ApiResult<{ status: string; message: string }>> {
-  return requestJson("/api/download", { method: "POST" });
+export function startDownload(request: DownloadRequest): Promise<ApiResult<{ status: string; message: string }>> {
+  return requestJson("/api/download", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(request),
+  });
 }
 
 // API-EDN-002: ダウンロード進捗確認
-export function getDownloadStatus(): Promise<ApiResult<DownloadStatus>> {
-  return requestJson("/api/download/status");
+export function getDownloadStatus(companyCode: string): Promise<ApiResult<DownloadStatus>> {
+  return requestJson(`/api/download/status${buildQuery({ company_code: companyCode })}`);
+}
+
+// API-EDN-003: EDINET企業検索
+export function searchEdinetCompanies(q: string): Promise<ApiResult<EdinetCompanySearchResult[]>> {
+  return requestJson(`/api/edinet/companies/search${buildQuery({ q })}`);
 }
 
 // API-COM-001: 企業一覧取得
@@ -72,6 +128,28 @@ export function getCompanies(): Promise<ApiResult<Company[]>> {
 }
 
 // API-COM-002: 企業財務データ取得
-export function getCompanyFinancials(code: string): Promise<ApiResult<CompanyFinancials>> {
-  return requestJson(`/api/companies/${code}/financials`);
+export function getCompanyFinancials(
+  code: string,
+  fromYear?: number,
+  toYear?: number,
+): Promise<ApiResult<CompanyFinancials>> {
+  return requestJson(`/api/companies/${code}/financials${buildQuery({ from_year: fromYear, to_year: toYear })}`);
+}
+
+// API-COM-003: 企業キャッシュフロー取得
+export function getCompanyCashFlow(
+  code: string,
+  fromYear?: number,
+  toYear?: number,
+): Promise<ApiResult<CashFlowRecord[]>> {
+  return requestJson(`/api/companies/${code}/cashflow${buildQuery({ from_year: fromYear, to_year: toYear })}`);
+}
+
+// API-COM-004: 企業の保存済みファクト一覧取得
+export function getCompanyFacts(
+  code: string,
+  elementId?: string,
+  periodEnd?: string,
+): Promise<ApiResult<FactRecord[]>> {
+  return requestJson(`/api/companies/${code}/facts${buildQuery({ element_id: elementId, period_end: periodEnd })}`);
 }

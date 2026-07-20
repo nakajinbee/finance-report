@@ -1,6 +1,12 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { getCompanyFinancials, type CompanyFinancials } from "../api/client";
+import {
+  getCompanyCashFlow,
+  getCompanyFinancials,
+  type CashFlowRecord,
+  type CompanyFinancials,
+} from "../api/client";
+import { CashFlowTable } from "../components/CashFlowTable";
 import { ErrorMessage } from "../components/ErrorMessage";
 import { FinancialChart } from "../components/FinancialChart";
 import { MetricSelector } from "../components/MetricSelector";
@@ -8,19 +14,25 @@ import { METRIC_DEFINITIONS, type MetricKey } from "../lib/metrics";
 
 type LoadState = "loading" | "loaded" | "not_found" | "error";
 
-const PERIOD_OPTIONS = [3, 5, 10] as const;
-const DEFAULT_PERIOD_COUNT = 5;
+function yearsFromPeriods(periods: string[]): number[] {
+  return Array.from(new Set(periods.map((p) => Number(p.slice(0, 4))))).sort((a, b) => a - b);
+}
 
 export function CompanyDetailPage() {
   const { code } = useParams<{ code: string }>();
   const navigate = useNavigate();
-  const [financials, setFinancials] = useState<CompanyFinancials | null>(null);
+
   const [loadState, setLoadState] = useState<LoadState>("loading");
-  const [periodCount, setPeriodCount] = useState<number>(DEFAULT_PERIOD_COUNT);
+  const [financials, setFinancials] = useState<CompanyFinancials | null>(null);
+  const [cashFlow, setCashFlow] = useState<CashFlowRecord[]>([]);
+  const [availableYears, setAvailableYears] = useState<number[]>([]);
+  const [fromYear, setFromYear] = useState<number | null>(null);
+  const [toYear, setToYear] = useState<number | null>(null);
   const [activeMetrics, setActiveMetrics] = useState<Set<MetricKey>>(
     () => new Set(METRIC_DEFINITIONS.map((m) => m.key)),
   );
 
+  // 初回ロード：保存済みの全期間を取得し、年度選択の選択肢と初期選択（全期間）を決める
   useEffect(() => {
     if (!code) {
       return;
@@ -31,8 +43,15 @@ export function CompanyDetailPage() {
         return;
       }
       if (result.ok) {
-        setFinancials(result.data);
-        setLoadState("loaded");
+        const years = yearsFromPeriods(result.data.company.periods);
+        setAvailableYears(years);
+        if (years.length > 0) {
+          setFromYear(years[0]);
+          setToYear(years[years.length - 1]);
+        } else {
+          setFinancials(result.data);
+          setLoadState("loaded");
+        }
       } else if (result.error.error === "COMPANY_NOT_FOUND") {
         setLoadState("not_found");
       } else {
@@ -43,6 +62,34 @@ export function CompanyDetailPage() {
       cancelled = true;
     };
   }, [code]);
+
+  // 表示期間選択（開始年度・終了年度）が決まるたびに、財務データ・キャッシュフローを再取得する
+  useEffect(() => {
+    if (!code || fromYear === null || toYear === null) {
+      return;
+    }
+    let cancelled = false;
+    setLoadState((current) => (current === "loaded" ? current : "loading"));
+    Promise.all([getCompanyFinancials(code, fromYear, toYear), getCompanyCashFlow(code, fromYear, toYear)]).then(
+      ([financialsResult, cashFlowResult]) => {
+        if (cancelled) {
+          return;
+        }
+        if (financialsResult.ok) {
+          setFinancials(financialsResult.data);
+          setCashFlow(cashFlowResult.ok ? cashFlowResult.data : []);
+          setLoadState("loaded");
+        } else if (financialsResult.error.error === "COMPANY_NOT_FOUND") {
+          setLoadState("not_found");
+        } else {
+          setLoadState("error");
+        }
+      },
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [code, fromYear, toYear]);
 
   function toggleMetric(key: MetricKey) {
     setActiveMetrics((current) => {
@@ -72,9 +119,7 @@ export function CompanyDetailPage() {
     return null;
   }
 
-  // dataはperiod_end昇順（API-COM-002）。直近N期分＝末尾からN件を取り、時系列順は維持する
-  const visibleRecords = financials.data.slice(-periodCount);
-  const hasAnyValue = visibleRecords.some((record) =>
+  const hasAnyValue = financials.data.some((record) =>
     METRIC_DEFINITIONS.some((metric) => record[metric.key] !== null),
   );
 
@@ -84,25 +129,54 @@ export function CompanyDetailPage() {
         ← 企業一覧へ
       </button>
 
-      <div>
-        <h1 className="text-xl font-semibold">{financials.company.name}</h1>
-        <p className="text-gray-500">会計基準：{financials.company.accounting_standard}</p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-xl font-semibold">{financials.company.name}</h1>
+          <p className="text-gray-500">会計基準：{financials.company.accounting_standard}</p>
+        </div>
+        {code && (
+          <button
+            type="button"
+            onClick={() => navigate(`/companies/${code}/facts`)}
+            className="text-sm text-gray-500 underline"
+          >
+            生データを確認
+          </button>
+        )}
       </div>
 
-      <div className="flex gap-2">
-        {PERIOD_OPTIONS.map((count) => (
-          <button
-            key={count}
-            type="button"
-            onClick={() => setPeriodCount(count)}
-            className={`rounded border px-3 py-1.5 text-sm ${
-              periodCount === count ? "border-gray-400 bg-gray-100" : "border-gray-200"
-            }`}
+      {availableYears.length > 0 && fromYear !== null && toYear !== null && (
+        <div className="flex items-center gap-2">
+          <span className="font-medium">表示期間：</span>
+          <select
+            value={fromYear}
+            onChange={(e) => setFromYear(Number(e.target.value))}
+            className="rounded border border-gray-300 px-2 py-1"
           >
-            {count}期
-          </button>
-        ))}
-      </div>
+            {availableYears
+              .filter((year) => year <= toYear)
+              .map((year) => (
+                <option key={year} value={year}>
+                  {year}年
+                </option>
+              ))}
+          </select>
+          〜
+          <select
+            value={toYear}
+            onChange={(e) => setToYear(Number(e.target.value))}
+            className="rounded border border-gray-300 px-2 py-1"
+          >
+            {availableYears
+              .filter((year) => year >= fromYear)
+              .map((year) => (
+                <option key={year} value={year}>
+                  {year}年
+                </option>
+              ))}
+          </select>
+        </div>
+      )}
 
       <MetricSelector activeMetrics={activeMetrics} onToggle={toggleMetric} />
 
@@ -111,7 +185,11 @@ export function CompanyDetailPage() {
       ) : !hasAnyValue ? (
         <p className="text-gray-500">表示できるデータがありません</p>
       ) : (
-        <FinancialChart records={visibleRecords} activeMetrics={activeMetrics} />
+        <FinancialChart records={financials.data} activeMetrics={activeMetrics} />
+      )}
+
+      {financials.data.length > 0 && (
+        <CashFlowTable financialRecords={financials.data} cashFlowRecords={cashFlow} />
       )}
     </div>
   );

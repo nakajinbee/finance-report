@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Navigate, Route, BrowserRouter as Router, Routes } from "react-router-dom";
 import { getCompanies } from "./api/client";
 import { CompanyDetailPage } from "./pages/CompanyDetailPage";
+import { CompanyFactsPage } from "./pages/CompanyFactsPage";
 import { CompanyListPage } from "./pages/CompanyListPage";
 import { DownloadPage } from "./pages/DownloadPage";
 
@@ -29,6 +30,7 @@ function App() {
         <Route path="/download" element={<DownloadPage />} />
         <Route path="/companies" element={<CompanyListPage />} />
         <Route path="/companies/:code" element={<CompanyDetailPage />} />
+        <Route path="/companies/:code/facts" element={<CompanyFactsPage />} />
       </Routes>
     </Router>
   );

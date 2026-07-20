@@ -10,18 +10,19 @@ import xbrl_parser
 from database import Company, Fact, SessionLocal
 
 # SCR-001（ダウンロード画面、docs/design/screen/SCR-001_download.md）向けのAPI-EDN-*系エンドポイント。
-#
-# TODO(cycle2): FR-04（全数値データ取り込み）・FR-06（会計基準の判定）・FR-07（企業検索）・
-# FR-09（決算日を使った動的探索）・FR-10（企業単位の排他制御）・FR-11（再ダウンロード時の
-# スキップ）は対応済み。残るFR-12（年度範囲指定でのグラフ表示、routers/companies.py側）・
-# API-COM-003（キャッシュフロー）・API-COM-004（保存済みデータ確認）・フロントエンドは
-# 次のステップ以降で行う。
 router = APIRouter()
 
-# 有価証券報告書の探索窓（前後日数）。デフォルトのedinet_client.search_annual_reportと同じ値。
-ANNUAL_REPORT_SEARCH_WINDOW_DAYS = 25
+# 書類探索窓（前後日数）。デフォルトのedinet_client.search_reportと同じ値。
+REPORT_SEARCH_WINDOW_DAYS = 25
 # 過去に遡る最大年数（EDINET側の閲覧期間上限＝縦覧5年+延長5年、FR-09参照）
 MAX_LOOKBACK_YEARS = 10
+# 1決算年あたりダウンロード対象とする書類種別（有価証券報告書・半期報告書、FR-08。
+# 四半期報告書は実機検証の結果対象4社いずれにも見つからず対象外とした
+# ＝docs/requirements/cycle2_requirements.md FR-08参照）
+REPORT_TYPES = [
+    edinet_client.DOC_TYPE_CODE_ANNUAL_REPORT,
+    edinet_client.DOC_TYPE_CODE_SEMI_ANNUAL_REPORT,
+]
 
 # 企業ごとの進捗状態（FR-10：同時ダウンロード制御を企業単位にする）。
 # _meta_lockはこの辞書の読み書き（多重起動チェック＆初期化）のみを保護する軽量ロック。
@@ -87,13 +88,26 @@ def _fact_exists_for_period(session, company_code: str, period_end: date) -> boo
     )
 
 
+def _expected_period_end(filer_info: edinet_client.FilerInfo, year: int, doc_type_code: str) -> date:
+    if doc_type_code == edinet_client.DOC_TYPE_CODE_SEMI_ANNUAL_REPORT:
+        return edinet_client.half_fiscal_year_end(filer_info.fiscal_year_end_month, filer_info.fiscal_year_end_day, year)
+    return date(year, filer_info.fiscal_year_end_month, filer_info.fiscal_year_end_day)
+
+
+def _fiscal_year_label(period_end: date, doc_type_code: str) -> str:
+    label = f"{period_end.year}年{period_end.month}月期"
+    if doc_type_code == edinet_client.DOC_TYPE_CODE_SEMI_ANNUAL_REPORT:
+        label += "（半期）"
+    return label
+
+
 def run_download_job(company_code: str, edinet_code: str, period: schemas.DownloadPeriod) -> None:
-    """指定企業の有価証券報告書をEDINETから取得し、DBに保存する（FR-07/FR-09）
+    """指定企業の有価証券報告書・半期報告書をEDINETから取得し、DBに保存する（FR-07/FR-08/FR-09）
 
     同一企業・同一期間のデータが既にDBに存在する場合はEDINETへ再アクセスせずスキップする
     （FR-11：EDINETへの不要なアクセスを減らす。訂正報告書の反映は自動検知しない設計であり、
     反映が必要な場合はDBの該当データを手動削除してから再ダウンロードする運用とする）。
-    1件失敗しても残りの年度は続行し、1件以上成功（スキップも成功扱い）していれば
+    1件失敗しても残りの年度・書類種別は続行し、1件以上成功（スキップも成功扱い）していれば
     status=doneとする（docs/design/screen/items/SCR-001_items.md の状態判定ルールと同じ）。
     """
     state = _states[company_code]
@@ -117,13 +131,26 @@ def run_download_job(company_code: str, edinet_code: str, period: schemas.Downlo
         )
         target_years = _determine_target_fiscal_years(period, latest_available_year)
 
+        # 対象年 x 書類種別（有価証券報告書・半期報告書）の組み合わせを対象にする（FR-08）。
+        # 半期報告書は制度上の提出義務化前の年度には存在しないため、その年度は探索自体を
+        # 行わない（無駄なEDINETアクセス・確実に失敗するログ行を避ける）
+        targets = [
+            (year, doc_type_code)
+            for year in target_years
+            for doc_type_code in REPORT_TYPES
+            if doc_type_code != edinet_client.DOC_TYPE_CODE_SEMI_ANNUAL_REPORT
+            or edinet_client.semi_annual_report_required(
+                filer_info.fiscal_year_end_month, filer_info.fiscal_year_end_day, year
+            )
+        ]
+
         state.logs = [
             schemas.DownloadLogEntry(
-                fiscal_year=f"{year}年{filer_info.fiscal_year_end_month}月期",
+                fiscal_year=_fiscal_year_label(_expected_period_end(filer_info, year, doc_type_code), doc_type_code),
                 status=schemas.DownloadLogStatus.PENDING,
                 message="待機中",
             )
-            for year in target_years
+            for year, doc_type_code in targets
         ]
 
         # 会計基準は原則EDINETのDEI要素から確定させるが、既に企業が保存済みならDBの値を使い、
@@ -132,8 +159,8 @@ def run_download_job(company_code: str, edinet_code: str, period: schemas.Downlo
         accounting_standard = existing_company.accounting_standard if existing_company is not None else None
 
         any_success = False
-        for i, year in enumerate(target_years):
-            expected_period_end = date(year, filer_info.fiscal_year_end_month, filer_info.fiscal_year_end_day)
+        for i, (year, doc_type_code) in enumerate(targets):
+            expected_period_end = _expected_period_end(filer_info, year, doc_type_code)
 
             if _fact_exists_for_period(session, company_code, expected_period_end):
                 state.logs[i].status = schemas.DownloadLogStatus.SKIPPED
@@ -144,13 +171,13 @@ def run_download_job(company_code: str, edinet_code: str, period: schemas.Downlo
             state.logs[i].status = schemas.DownloadLogStatus.IN_PROGRESS
             state.logs[i].message = "取得中"
             try:
-                center_date = edinet_client.annual_report_search_center(
-                    filer_info.fiscal_year_end_month, filer_info.fiscal_year_end_day, year
+                center_date = edinet_client.report_search_center(
+                    filer_info.fiscal_year_end_month, filer_info.fiscal_year_end_day, year, doc_type_code
                 )
-                document = edinet_client.search_annual_report(
-                    filer_info.sec_code, center_date, window_days=ANNUAL_REPORT_SEARCH_WINDOW_DAYS
+                document = edinet_client.search_report(
+                    filer_info.sec_code, center_date, doc_type_code, window_days=REPORT_SEARCH_WINDOW_DAYS
                 )
-                csv_bytes = edinet_client.fetch_annual_report_csv(document["docID"])
+                csv_bytes = edinet_client.fetch_report_csv(document["docID"], doc_type_code)
 
                 if accounting_standard is None:
                     accounting_standard = xbrl_parser.extract_accounting_standard(csv_bytes)
@@ -159,8 +186,11 @@ def run_download_job(company_code: str, edinet_code: str, period: schemas.Downlo
 
                 facts = xbrl_parser.parse_numeric_facts(csv_bytes)
 
-                period_end = date.fromisoformat(document["periodEnd"])
-                _upsert_facts(session, company_code, document["docID"], document["docTypeCode"], period_end, facts)
+                # 書類取得APIのdocument["periodEnd"]は使わず、決算日から算出した期間終了日を
+                # 保存する。半期報告書ではEDINET側のperiodEndが対象期間（半期末）ではなく
+                # 対象事業年度の期末（年度末）を返すことが実機検証で判明したため
+                # （2026-07-20、リクルートHD 2024年9月期半期報告書で確認）。
+                _upsert_facts(session, company_code, document["docID"], document["docTypeCode"], expected_period_end, facts)
                 session.commit()
 
                 state.logs[i].status = schemas.DownloadLogStatus.DONE

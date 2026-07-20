@@ -8,6 +8,9 @@ get:
     サーバー側は、企業のcompanies.accounting_standardに応じた会計基準別の
     element_idマッピング（xbrl_parser.pyの各パーサーが持つマッピングと同じもの）を使って、
     factsテーブルから5指標を引き当てる。
+    FR-08により半期報告書（docTypeCode: 160）由来のfactsも保存されるが、本APIは
+    年次比較グラフ用のため有価証券報告書（docTypeCode: 120）のみを対象とする
+    （半期データはAPI-COM-004経由でSCR-004から参照する）。
   operationId: getCompanyFinancials
   parameters:
     - name: code

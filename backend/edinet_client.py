@@ -1,3 +1,4 @@
+import calendar
 import csv
 import io
 import os
@@ -25,10 +26,23 @@ MIN_REQUEST_INTERVAL_SECONDS = 0.6
 
 # 書類種別コード：有価証券報告書（訂正版の"130"は含まない）
 DOC_TYPE_CODE_ANNUAL_REPORT = "120"
+# 書類種別コード：半期報告書（訂正版の"170"は含まない、FR-08）
+DOC_TYPE_CODE_SEMI_ANNUAL_REPORT = "160"
 # 書類取得APIの必要書類コード：CSV（XBRLをCSVに変換したもの）
 DOCUMENT_TYPE_CSV = 5
-# 書類取得APIのZIPから取り出す提出本文書CSVのファイル名プレフィックス
-ANNUAL_REPORT_CSV_PREFIX = "jpcrp030000-asr-001_"
+# 書類取得APIのZIPから取り出す提出本文書CSVのファイル名プレフィックス（書類種別ごと）。
+# 半期報告書は制度移行期のため複数のプレフィックスが存在する（実機確認済み）：
+# "ssr"＝2025年9月期以降の半期報告書、"q2r"＝2024年9月期（旧・四半期報告書からの移行期）。
+REPORT_CSV_PREFIXES = {
+    DOC_TYPE_CODE_ANNUAL_REPORT: ["jpcrp030000-asr-001_"],
+    DOC_TYPE_CODE_SEMI_ANNUAL_REPORT: ["jpcrp040300-ssr-001_", "jpcrp040300-q2r-001_"],
+}
+# 提出期限の目安（決算期間終了日からの日数）。有価証券報告書は3ヶ月以内、
+# 半期報告書は45日以内（FR-08、docs/requirements/cycle2_requirements.md 実機検証済み）
+REPORT_FILING_DEADLINE_DAYS = {
+    DOC_TYPE_CODE_ANNUAL_REPORT: 90,
+    DOC_TYPE_CODE_SEMI_ANNUAL_REPORT: 45,
+}
 
 _last_request_time: float = 0.0
 
@@ -91,16 +105,16 @@ def fetch_document_list(target_date: date) -> list[dict]:
     return body.get("results") or []
 
 
-def find_annual_report(documents: list[dict], sec_code: str) -> dict | None:
-    """documents から docTypeCode=='120' かつ secCode一致の書類を1件返す（見つからなければNone）"""
+def find_report(documents: list[dict], sec_code: str, doc_type_code: str) -> dict | None:
+    """documents から指定docTypeCode かつ secCode一致の書類を1件返す（見つからなければNone）"""
     for document in documents:
-        if document.get("secCode") == sec_code and document.get("docTypeCode") == DOC_TYPE_CODE_ANNUAL_REPORT:
+        if document.get("secCode") == sec_code and document.get("docTypeCode") == doc_type_code:
             return document
     return None
 
 
-def search_annual_report(sec_code: str, around_date: date, window_days: int = 25) -> dict:
-    """around_dateを起点に前後window_days日の範囲で有価証券報告書を探索して返す。
+def search_report(sec_code: str, around_date: date, doc_type_code: str, window_days: int = 25) -> dict:
+    """around_dateを起点に前後window_days日の範囲で指定書類種別を探索して返す。
 
     提出日は年によって数日〜1週間前後ずれるため、日付を1日ずつ広げながら探索する
     （memo/リクルートデータ取得メモ.md Step2の検証スクリプトと同じロジック）。
@@ -110,16 +124,17 @@ def search_annual_report(sec_code: str, around_date: date, window_days: int = 25
         for sign in ([0] if offset == 0 else [1, -1]):
             candidate_date = around_date + timedelta(days=offset * sign)
             documents = fetch_document_list(candidate_date)
-            annual_report = find_annual_report(documents, sec_code)
-            if annual_report is not None:
-                return annual_report
+            report = find_report(documents, sec_code, doc_type_code)
+            if report is not None:
+                return report
 
     raise EdinetDocumentNotFoundError(
-        f"sec_code={sec_code} の有価証券報告書が {around_date} の前後{window_days}日以内に見つかりませんでした"
+        f"sec_code={sec_code}, docTypeCode={doc_type_code} の書類が "
+        f"{around_date} の前後{window_days}日以内に見つかりませんでした"
     )
 
 
-def fetch_annual_report_csv(doc_id: str) -> bytes:
+def fetch_report_csv(doc_id: str, doc_type_code: str) -> bytes:
     """書類取得API(type=5)でCSVのZIPを取得し、ZIP内の提出本文書CSVの生バイト列を返す
 
     書類取得APIは成功時（ZIP）と失敗時（JSON）でContent-Typeが異なるだけで
@@ -138,9 +153,11 @@ def fetch_annual_report_csv(doc_id: str) -> bytes:
             f"status={metadata.get('status')}, message={metadata.get('message')}"
         )
 
+    csv_prefixes = REPORT_CSV_PREFIXES[doc_type_code]
     with zipfile.ZipFile(io.BytesIO(response.content)) as archive:
         for name in archive.namelist():
-            if name.split("/")[-1].startswith(ANNUAL_REPORT_CSV_PREFIX):
+            basename = name.split("/")[-1]
+            if any(basename.startswith(prefix) for prefix in csv_prefixes):
                 return archive.read(name)
 
     raise EdinetApiError(f"doc_id={doc_id} のZIPに提出本文書CSVが含まれていません")
@@ -250,11 +267,58 @@ def determine_latest_available_fiscal_year(today: date, fiscal_year_end_month: i
     return today.year if today >= filing_deadline else today.year - 1
 
 
-def annual_report_search_center(fiscal_year_end_month: int, fiscal_year_end_day: int, target_year: int) -> date:
-    """target_year年の決算に対応する有価証券報告書の探索起点日を返す（FR-09）
+def _shift_months(base: date, months: int) -> date:
+    """baseからmonths ヶ月前の日付を返す（月末日はcalendar.monthrangeでクランプする）
 
-    提出期限は決算日から3ヶ月以内のため、決算日+90日を起点とする
-    （search_annual_reportのwindow_days=25とあわせて実務上の提出日ゆらぎを吸収する）。
+    例：8月31日の6ヶ月前は2月31日が存在しないため2月28日/29日になる。
     """
+    month_index = base.month - 1 - months
+    year = base.year + month_index // 12
+    month = month_index % 12 + 1
+    day = min(base.day, calendar.monthrange(year, month)[1])
+    return date(year, month, day)
+
+
+# 半期報告書制度の開始日：2024年4月1日以後に開始する事業年度から、四半期報告書に代わり
+# 半期報告書の提出が義務化された。それより前に開始した事業年度には半期報告書は存在しない
+# （2026-07-20、リクルートHDの実機検証で確認：2024年4月1日開始の事業年度＝2025年3月期の
+# 半期＝2024年9月期分は存在したが、2023年4月1日開始の事業年度＝2024年3月期の半期＝
+# 2023年9月期分は存在しなかった）
+SEMI_ANNUAL_REPORT_TRANSITION_DATE = date(2024, 4, 1)
+
+
+def fiscal_year_start(fiscal_year_end_month: int, fiscal_year_end_day: int, target_year: int) -> date:
+    """target_year年の決算に対応する事業年度の開始日を返す（前年の決算日の翌日）"""
+    previous_fiscal_year_end = date(target_year - 1, fiscal_year_end_month, fiscal_year_end_day)
+    return previous_fiscal_year_end + timedelta(days=1)
+
+
+def semi_annual_report_required(fiscal_year_end_month: int, fiscal_year_end_day: int, target_year: int) -> bool:
+    """target_year年の決算に対応する事業年度に、半期報告書の提出義務があるかを返す（FR-08）
+
+    義務化前の年度をEDINETへ探索しても書類が存在せず必ずエラーになるだけのため、
+    探索自体を行わないようにする（無駄なEDINETアクセスを避ける、FR-11と同じ考え方）。
+    """
+    return fiscal_year_start(fiscal_year_end_month, fiscal_year_end_day, target_year) >= SEMI_ANNUAL_REPORT_TRANSITION_DATE
+
+
+def half_fiscal_year_end(fiscal_year_end_month: int, fiscal_year_end_day: int, target_year: int) -> date:
+    """target_year年の決算に対応する半期末日を返す（決算日の6ヶ月前、FR-08）"""
     fiscal_year_end = date(target_year, fiscal_year_end_month, fiscal_year_end_day)
-    return fiscal_year_end + timedelta(days=90)
+    return _shift_months(fiscal_year_end, 6)
+
+
+def report_search_center(
+    fiscal_year_end_month: int, fiscal_year_end_day: int, target_year: int, doc_type_code: str
+) -> date:
+    """target_year年の決算に対応する指定書類種別の探索起点日を返す（FR-09・FR-08）
+
+    有価証券報告書は決算日、半期報告書は半期末日を基準に、それぞれの提出期限日数
+    （REPORT_FILING_DEADLINE_DAYS）を加えた日を起点とする
+    （search_reportのwindow_days=25とあわせて実務上の提出日ゆらぎを吸収する）。
+    """
+    if doc_type_code == DOC_TYPE_CODE_SEMI_ANNUAL_REPORT:
+        period_end = half_fiscal_year_end(fiscal_year_end_month, fiscal_year_end_day, target_year)
+    else:
+        period_end = date(target_year, fiscal_year_end_month, fiscal_year_end_day)
+    return period_end + timedelta(days=REPORT_FILING_DEADLINE_DAYS[doc_type_code])

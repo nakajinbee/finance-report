@@ -4,6 +4,7 @@ get:
   description: |
     指定した証券コードの企業の営業・投資・財務キャッシュフローを期間分返す（FR-13）。
     API-COM-002と同様、会計基準別のCF要素IDマッピングを使ってfactsテーブルから引き当てる。
+    API-COM-002と同じ理由で、有価証券報告書（docTypeCode: 120）由来のfactsのみを対象とする。
   operationId: getCompanyCashFlow
   parameters:
     - name: code

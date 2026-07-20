@@ -92,6 +92,29 @@ class DownloadRequest(BaseModel):
     period: DownloadPeriod
 
 
+class CashFlowRecord(BaseModel):
+    """docs/design/api/components/schemas/CashFlowRecord.yaml（FR-13）"""
+
+    fiscal_year: str
+    period_end: date
+    operating_cash_flow: int | None = None
+    investing_cash_flow: int | None = None
+    financing_cash_flow: int | None = None
+
+
+class FactRecord(BaseModel):
+    """docs/design/api/components/schemas/FactRecord.yaml（FR-16、SCR-004向け）"""
+
+    element_id: str
+    element_name: str | None = None
+    doc_type_code: str
+    period_end: date
+    context_id: str
+    consolidated_or_individual: str | None = None
+    unit: str | None = None
+    value: float
+
+
 class ErrorResponse(BaseModel):
     """docs/design/api/components/schemas/Error.yaml
 
