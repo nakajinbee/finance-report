@@ -1,7 +1,9 @@
+import csv
 import io
 import os
 import time
 import zipfile
+from dataclasses import dataclass
 from datetime import date, timedelta
 
 import requests
@@ -11,6 +13,10 @@ load_dotenv()
 
 EDINET_API_KEY = os.environ["EDINET_API_KEY"]
 BASE_URL = "https://api.edinet-fsa.go.jp/api/v2"
+# EDINETコードリスト（提出者マスタ）のダウンロードURL。api.edinet-fsa.go.jp とは別ホストの
+# 静的ファイル配信であり、Subscription-Key不要・レート制限の対象外（実機確認済み）。
+FILER_INFO_URL = "https://disclosure2dl.edinet-fsa.go.jp/searchdocument/codelist/Edinetcode.zip"
+FILER_INFO_CSV_NAME = "EdinetcodeDlInfo.csv"
 REQUEST_TIMEOUT_SECONDS = 15
 # EDINET APIの429(Too Many Requests)を避けるための最小リクエスト間隔
 # memo/リクルートデータ取得メモ.md の実機検証で採用した間隔と同じ
@@ -137,3 +143,43 @@ def fetch_annual_report_csv(doc_id: str) -> bytes:
                 return archive.read(name)
 
     raise EdinetApiError(f"doc_id={doc_id} のZIPに提出本文書CSVが含まれていません")
+
+
+@dataclass
+class FilerInfo:
+    """EDINETコードリストから取得した提出者情報"""
+
+    edinet_code: str
+    name: str
+    sector: str | None
+    sec_code: str | None
+
+
+def fetch_filer_info(edinet_code: str) -> FilerInfo:
+    """EDINETコードリスト(EdinetcodeDlInfo.csv)をダウンロードし、
+    指定edinet_codeの提出者名・業種・証券コードを返す。
+
+    このCSVはCP932(Shift-JIS)エンコードで、1行目はダウンロード実行日等のサマリ行、
+    2行目がヘッダ行（実機確認済み）。
+    """
+    response = requests.get(FILER_INFO_URL, timeout=REQUEST_TIMEOUT_SECONDS)
+    if response.status_code != 200:
+        raise EdinetApiError(f"EDINETコードリストの取得に失敗しました: status={response.status_code}")
+
+    with zipfile.ZipFile(io.BytesIO(response.content)) as archive:
+        raw_bytes = archive.read(FILER_INFO_CSV_NAME)
+
+    text = raw_bytes.decode("cp932")
+    data_lines = text.splitlines()[1:]  # 1行目のサマリ行をスキップ
+    reader = csv.DictReader(data_lines)
+
+    for row in reader:
+        if row["ＥＤＩＮＥＴコード"] == edinet_code:
+            return FilerInfo(
+                edinet_code=edinet_code,
+                name=row["提出者名"],
+                sector=row["提出者業種"] or None,
+                sec_code=row["証券コード"] or None,
+            )
+
+    raise EdinetDocumentNotFoundError(f"EDINETコードリストに edinet_code={edinet_code} が見つかりません")
