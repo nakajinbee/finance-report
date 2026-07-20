@@ -18,7 +18,13 @@ paths:
     $ref: './paths/edinet/download.yaml'
   /api/download/status:
     $ref: './paths/edinet/download_status.yaml'
+  /api/edinet/companies/search:
+    $ref: './paths/edinet/search.yaml'
   /api/companies:
     $ref: './paths/com/companies.yaml'
   /api/companies/{code}/financials:
     $ref: './paths/com/companies_code_financials.yaml'
+  /api/companies/{code}/cashflow:
+    $ref: './paths/com/companies_code_cashflow.yaml'
+  /api/companies/{code}/facts:
+    $ref: './paths/com/companies_code_facts.yaml'

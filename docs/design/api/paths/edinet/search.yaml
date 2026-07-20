@@ -1,0 +1,35 @@
+get:
+  x-api-id: API-EDN-003
+  summary: EDINET企業検索
+  description: |
+    EDINETコードリスト（全上場企業約11,348件の提出者マスタ）から、企業名・証券コードで
+    部分一致検索する（docs/requirements/cycle2_requirements.md FR-07）。
+    検索対象はEDINETに登録された全上場企業（DBに未保存の企業も含む）。
+    企業一覧画面の検索（API-COM-001の結果をフロント内で絞り込むもの）とは対象範囲が異なる。
+
+    キャッシュ方針（NFR-05）：EdinetcodeDlInfo.csvはアプリプロセスの起動中メモリキャッシュする。
+    初回検索時に1回だけ取得し、以後はメモリ上のデータを使う（プロセス再起動まで再取得しない）。
+  operationId: searchEdinetCompanies
+  parameters:
+    - name: q
+      in: query
+      required: true
+      description: 検索キーワード（企業名または証券コード、部分一致）
+      schema:
+        type: string
+        example: リクルート
+  responses:
+    '200':
+      description: 検索結果（最大件数は実装時に決める）
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              $ref: '../../components/schemas/EdinetCompanySearchResult.yaml'
+    '500':
+      description: サーバーエラー
+      content:
+        application/json:
+          schema:
+            $ref: '../../components/schemas/Error.yaml'

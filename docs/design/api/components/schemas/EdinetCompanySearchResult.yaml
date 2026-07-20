@@ -1,0 +1,18 @@
+type: object
+description: FR-07。EDINETコードリストから検索した企業（ダウンロード前なので会計基準は不明）
+properties:
+  edinet_code:
+    type: string
+    example: E07801
+  name:
+    type: string
+    example: 株式会社リクルートホールディングス
+  sec_code:
+    type: string
+    nullable: true
+    description: 証券コード（5桁、EDINET表記そのまま）
+    example: '60980'
+  sector:
+    type: string
+    nullable: true
+    example: サービス業

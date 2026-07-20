@@ -1,8 +1,57 @@
 post:
   x-api-id: API-EDN-001
   summary: 財務データのダウンロード開始
-  description: EDINET API からリクルートホールディングスの財務データを取得し DB に保存する。処理は非同期で実行され、進捗は /api/download/status で確認する。
+  description: |
+    EDINET API から指定企業の財務データを取得しDBに保存する。処理は非同期で実行され、
+    進捗は /api/download/status?company_code= で確認する。
+    サイクル2で企業・期間を指定できるようになった（docs/requirements/cycle2_requirements.md FR-07/FR-09）。
+    同時ダウンロード制御は企業単位（FR-10）：異なる企業への同時ダウンロードは可能、
+    同一企業への多重実行のみ409で防止する。
+
+    書類の探索起点日はサーバー内部でEDINETコードリストの「決算日」から動的に算出する
+    （FR-09参照）。決算日はリクエスト・レスポンスどちらにも含めない（サーバー内部の実装詳細）。
   operationId: startDownload
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required: [company_code, edinet_code, period]
+          properties:
+            company_code:
+              type: string
+              description: 証券コード（4桁）。DB保存キーとして使用
+              example: '6098'
+            edinet_code:
+              type: string
+              description: EDINETコード。FR-07の企業検索結果から取得する
+              example: E07801
+            period:
+              oneOf:
+                - type: object
+                  properties:
+                    type:
+                      type: string
+                      enum: [all]
+                  required: [type]
+                  description: 全期間（EDINET側の制約により実際は最大10年分。FR-09参照）
+                - type: object
+                  properties:
+                    type:
+                      type: string
+                      enum: [range]
+                    from_year:
+                      type: integer
+                      example: 2020
+                    to_year:
+                      type: integer
+                      example: 2024
+                  required: [type, from_year, to_year]
+              example:
+                type: range
+                from_year: 2020
+                to_year: 2024
   responses:
     '202':
       description: ダウンロード開始受付
@@ -17,8 +66,14 @@ post:
               message:
                 type: string
                 example: ダウンロードを開始しました
+    '400':
+      description: リクエストが不正（from_year > to_yearや、period.typeが不正な値等）
+      content:
+        application/json:
+          schema:
+            $ref: '../../components/schemas/Error.yaml'
     '409':
-      description: すでにダウンロードが進行中
+      description: 同一企業のダウンロードがすでに進行中
       content:
         application/json:
           schema:

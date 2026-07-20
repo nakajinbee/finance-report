@@ -1,8 +1,18 @@
 get:
   x-api-id: API-EDN-002
   summary: ダウンロード進捗確認
-  description: ダウンロードの進捗状況を返す。フロントエンドが1秒ごとにポーリングして取得ログを更新する。
+  description: |
+    指定企業のダウンロード進捗状況を返す。フロントエンドが1秒ごとにポーリングして取得ログを更新する。
+    サイクル2で同時ダウンロード制御が企業単位になったため（FR-10）、company_codeが必須になった。
   operationId: getDownloadStatus
+  parameters:
+    - name: company_code
+      in: query
+      required: true
+      description: 証券コード（4桁）
+      schema:
+        type: string
+        example: '6098'
   responses:
     '200':
       description: 進捗情報
@@ -10,6 +20,12 @@ get:
         application/json:
           schema:
             $ref: '../../components/schemas/DownloadStatus.yaml'
+    '404':
+      description: 指定company_codeのダウンロード履歴が存在しない（一度もダウンロード開始していない）
+      content:
+        application/json:
+          schema:
+            $ref: '../../components/schemas/Error.yaml'
     '500':
       description: サーバーエラー
       content:

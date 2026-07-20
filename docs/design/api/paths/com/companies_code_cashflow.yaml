@@ -1,0 +1,53 @@
+get:
+  x-api-id: API-COM-003
+  summary: 企業キャッシュフロー取得
+  description: |
+    指定した証券コードの企業の営業・投資・財務キャッシュフローを期間分返す（FR-13）。
+    API-COM-002と同様、会計基準別のCF要素IDマッピングを使ってfactsテーブルから引き当てる。
+  operationId: getCompanyCashFlow
+  parameters:
+    - name: code
+      in: path
+      required: true
+      schema:
+        type: string
+        example: '6098'
+    - name: from_year
+      in: query
+      required: false
+      schema:
+        type: integer
+        example: 2020
+    - name: to_year
+      in: query
+      required: false
+      schema:
+        type: integer
+        example: 2024
+  responses:
+    '200':
+      description: キャッシュフローデータ
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              $ref: '../../components/schemas/CashFlowRecord.yaml'
+    '400':
+      description: from_year・to_yearの指定が不正（from_year > to_year等）
+      content:
+        application/json:
+          schema:
+            $ref: '../../components/schemas/Error.yaml'
+    '404':
+      description: 指定した企業が存在しない
+      content:
+        application/json:
+          schema:
+            $ref: '../../components/schemas/Error.yaml'
+    '500':
+      description: サーバーエラー
+      content:
+        application/json:
+          schema:
+            $ref: '../../components/schemas/Error.yaml'

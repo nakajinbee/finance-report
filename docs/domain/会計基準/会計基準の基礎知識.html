@@ -1,0 +1,471 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>会計基準の基礎知識 — 日本基準・IFRS・米国基準</title>
+<style>
+  :root {
+    --paper: #f2f5f2;
+    --paper-raised: #ffffff;
+    --ink: #1c2b24;
+    --ink-soft: #445048;
+    --rule: #d3ddd4;
+    --rule-strong: #aebcaf;
+    --accent: #1f6f4a;
+    --accent-soft: #e3efe6;
+    --warn: #a8402f;
+    --warn-soft: #f7e9e5;
+    --code-bg: #e9efe9;
+  }
+  :root[data-theme="dark"] {
+    --paper: #131a15;
+    --paper-raised: #1a231c;
+    --ink: #e7ece7;
+    --ink-soft: #aab8ac;
+    --rule: #2c3a2e;
+    --rule-strong: #3d4f40;
+    --accent: #58c38b;
+    --accent-soft: #1c3327;
+    --warn: #e08877;
+    --warn-soft: #3a221e;
+    --code-bg: #1f2921;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #131a15;
+      --paper-raised: #1a231c;
+      --ink: #e7ece7;
+      --ink-soft: #aab8ac;
+      --rule: #2c3a2e;
+      --rule-strong: #3d4f40;
+      --accent: #58c38b;
+      --accent-soft: #1c3327;
+      --warn: #e08877;
+      --warn-soft: #3a221e;
+      --code-bg: #1f2921;
+    }
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: "Hiragino Sans", "Yu Gothic Medium", "Noto Sans JP", "Meiryo", sans-serif;
+    line-height: 1.85;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .masthead {
+    padding: 4.5rem 1.5rem 3rem;
+    text-align: center;
+    background:
+      repeating-linear-gradient(
+        var(--paper) 0px, var(--paper) 38px, var(--rule) 39px
+      );
+    border-bottom: 1px solid var(--rule-strong);
+  }
+  .masthead .eyebrow {
+    display: inline-block;
+    font-size: 0.78rem;
+    letter-spacing: 0.12em;
+    color: var(--accent);
+    font-weight: 600;
+    margin-bottom: 0.9rem;
+    padding: 0.3em 0.9em;
+    border: 1px solid var(--accent);
+    border-radius: 999px;
+    background: var(--accent-soft);
+  }
+  .masthead h1 {
+    font-family: "Hiragino Mincho ProN", "Yu Mincho", "Noto Serif JP", serif;
+    font-weight: 600;
+    font-size: clamp(1.9rem, 4.2vw, 2.75rem);
+    margin: 0 0 0.7rem;
+    text-wrap: balance;
+    letter-spacing: 0.02em;
+  }
+  .masthead p {
+    color: var(--ink-soft);
+    max-width: 34em;
+    margin: 0 auto;
+    font-size: 1.02rem;
+  }
+
+  main {
+    max-width: 42rem;
+    margin: 0 auto;
+    padding: 3.5rem 1.5rem 6rem;
+  }
+
+  section { margin-bottom: 3.4rem; }
+
+  h2 {
+    font-family: "Hiragino Mincho ProN", "Yu Mincho", "Noto Serif JP", serif;
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin: 0 0 1.3rem;
+    padding-bottom: 0.6rem;
+    border-bottom: 2px solid var(--ink);
+    text-wrap: balance;
+  }
+
+  h3 {
+    font-size: 1.02rem;
+    font-weight: 700;
+    margin: 1.6rem 0 0.6rem;
+    color: var(--accent);
+  }
+
+  p { margin: 0 0 1em; color: var(--ink); }
+  .lede { color: var(--ink-soft); font-size: 1.02rem; }
+
+  .standard-card {
+    background: var(--paper-raised);
+    border: 1px solid var(--rule);
+    border-left: 4px solid var(--ink);
+    border-radius: 4px;
+    padding: 1.6rem 1.8rem;
+  }
+  .standard-card .kicker {
+    display: flex;
+    align-items: baseline;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.3rem;
+  }
+  .standard-card .kicker .abbr {
+    font-family: ui-monospace, "SF Mono", Consolas, monospace;
+    font-size: 0.85rem;
+    color: var(--ink-soft);
+  }
+  .standard-card .body-name {
+    font-size: 0.85rem;
+    color: var(--ink-soft);
+    margin: -0.3rem 0 1.1rem;
+  }
+
+  .example-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4em;
+    font-size: 0.85rem;
+    background: var(--accent-soft);
+    color: var(--accent);
+    border-radius: 999px;
+    padding: 0.35em 0.9em 0.35em 0.7em;
+    margin-top: 1rem;
+    font-weight: 600;
+  }
+  .example-chip::before {
+    content: "✓";
+    font-size: 0.8em;
+  }
+  .example-chip .company {
+    font-weight: 700;
+    color: var(--ink);
+  }
+
+  .note {
+    font-size: 0.92rem;
+    color: var(--ink-soft);
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px dashed var(--rule-strong);
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.92rem;
+  }
+  .table-wrap { overflow-x: auto; margin: 0.5rem 0; }
+  th, td {
+    text-align: left;
+    padding: 0.7em 0.9em;
+    border-bottom: 1px solid var(--rule);
+    vertical-align: top;
+  }
+  thead th {
+    font-size: 0.78rem;
+    letter-spacing: 0.04em;
+    color: var(--ink-soft);
+    font-weight: 600;
+    border-bottom: 2px solid var(--ink);
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  td.num, th.num { font-variant-numeric: tabular-nums; }
+
+  .spectrum {
+    margin: 1.6rem 0 0.4rem;
+    padding: 1.6rem 1.2rem 1.2rem;
+    background: var(--paper-raised);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+  }
+  .spectrum-track {
+    position: relative;
+    height: 2px;
+    background: var(--rule-strong);
+    margin: 2.2rem 0.5rem 0.6rem;
+  }
+  .spectrum-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.78rem;
+    color: var(--ink-soft);
+    letter-spacing: 0.03em;
+  }
+  .dot {
+    position: absolute;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 11px; height: 11px;
+    border-radius: 50%;
+    background: var(--ink);
+    border: 2px solid var(--paper-raised);
+    box-shadow: 0 0 0 1px var(--rule-strong);
+  }
+  .dot-label {
+    position: absolute;
+    top: -1.7rem;
+    transform: translateX(-50%);
+    font-size: 0.78rem;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+
+  code {
+    font-family: ui-monospace, "SF Mono", Consolas, monospace;
+    background: var(--code-bg);
+    padding: 0.15em 0.4em;
+    border-radius: 3px;
+    font-size: 0.88em;
+  }
+
+  .callout {
+    background: var(--warn-soft);
+    border: 1px solid var(--warn);
+    border-radius: 4px;
+    padding: 1.1rem 1.3rem;
+    font-size: 0.92rem;
+    margin-top: 1.2rem;
+  }
+  .callout strong { color: var(--warn); }
+
+  .dei-table code { white-space: nowrap; }
+
+  footer {
+    max-width: 42rem;
+    margin: 0 auto;
+    padding: 0 1.5rem 4rem;
+    color: var(--ink-soft);
+    font-size: 0.82rem;
+    border-top: 1px solid var(--rule);
+    padding-top: 1.5rem;
+  }
+
+  a { color: var(--accent); }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .standard-card, .example-chip { transition: border-color 0.2s ease; }
+  }
+</style>
+</head>
+<body>
+
+<div class="masthead">
+  <span class="eyebrow">DOMAIN NOTE — 会計ドメイン知識</span>
+  <h1>会計基準の基礎知識</h1>
+  <p>EDINET提出企業は、日本基準・IFRS・米国基準のいずれかで有価証券報告書を作成する。
+  3基準の特徴とEDINETデータ上での見分け方を、実機検証した実在企業の例とともにまとめる。</p>
+</div>
+
+<main>
+
+  <section>
+    <h2>1. 日本基準（J-GAAP）</h2>
+    <div class="standard-card">
+      <div class="kicker">
+        <strong>日本基準</strong>
+        <span class="abbr">J-GAAP / Japan GAAP</span>
+      </div>
+      <p class="body-name">策定主体：企業会計基準委員会（ASBJ）</p>
+
+      <h3>特徴</h3>
+      <p>取得原価主義を基本としつつ、金融商品など一部は時価評価を導入する。のれんは一定期間で
+      <strong>償却する</strong>（IFRS・米国基準は非償却）。日本の会社法・税法との整合性を重視した設計。</p>
+
+      <h3>メリット</h3>
+      <p>日本の投資家・取引先・監督官庁にとって馴染みがあり比較・監督がしやすい。税務申告との
+      親和性が高く実務負担が軽い。IFRS・米国基準への移行コスト（人材育成・システム改修）がかからない。</p>
+
+      <h3>なぜこの基準を採用するか</h3>
+      <p>国内投資家中心の資金調達で十分な企業、グローバル資金調達の必要性が低い企業、
+      移行コストをかけるメリットが薄い企業が採用する。日本の上場企業の多数派がこの基準。</p>
+
+      <div class="example-chip">実機検証済み：<span class="company">任天堂株式会社</span>（証券コード 7974）</div>
+    </div>
+  </section>
+
+  <section>
+    <h2>2. 国際財務報告基準（IFRS）</h2>
+    <div class="standard-card">
+      <div class="kicker">
+        <strong>IFRS</strong>
+        <span class="abbr">International Financial Reporting Standards</span>
+      </div>
+      <p class="body-name">策定主体：国際会計基準審議会（IASB）。世界140以上の国・地域で採用。</p>
+
+      <h3>特徴</h3>
+      <p><strong>原則主義（Principle-based）</strong>：詳細なルールより原則を示し、実質判断を重視する。
+      資産・負債について公正価値（時価）評価する範囲が日本基準より広い。のれんは償却せず、
+      毎期の減損テストのみで評価する。</p>
+
+      <h3>メリット</h3>
+      <p>海外投資家との比較可能性が高まり、グローバルな資金調達がしやすくなる。海外子会社を
+      多く持つ企業では連結処理が統一されシンプルになる。のれんを償却しないため、M&amp;A実施後の
+      利益が会計上圧迫されにくい（日本基準比）。</p>
+
+      <h3>なぜこの基準を採用するか</h3>
+      <p>グローバルに事業展開している企業、海外投資家からの資金調達を重視する企業、
+      M&amp;Aを積極的に行う企業が採用する。</p>
+
+      <div class="example-chip">実機検証済み：<span class="company">株式会社リクルートホールディングス</span>（証券コード 6098）</div>
+      <div class="example-chip">実機検証済み：<span class="company">トヨタ自動車株式会社</span>（証券コード 7203）</div>
+      <p class="note">トヨタ自動車はかつて米国会計基準を採用していたが、現在はIFRSに移行済み
+      （2026年7月時点の最新の有価証券報告書で実機確認）。会計基準は固定ではなく、
+      企業の判断で変更されることがある実例。</p>
+    </div>
+  </section>
+
+  <section>
+    <h2>3. 米国会計基準（US GAAP）</h2>
+    <div class="standard-card">
+      <div class="kicker">
+        <strong>米国基準</strong>
+        <span class="abbr">United States GAAP</span>
+      </div>
+      <p class="body-name">策定主体：財務会計基準審議会（FASB）</p>
+
+      <h3>特徴</h3>
+      <p><strong>細則主義（Rule-based）</strong>：IFRSとは対照的に、業種別・取引種類別に詳細なルールが
+      定められている。のれんはIFRSと同様に<strong>償却せず</strong>、減損テストのみで評価する。
+      開示項目・注記が非常に詳細。</p>
+
+      <h3>メリット</h3>
+      <p>米国市場への上場や米国預託証券（ADR）発行を行う企業にとって、米国基準の財務諸表を
+      そのまま使い回せる。米国投資家に馴染みがあり比較可能性が高い。</p>
+
+      <h3>なぜこの基準を採用するか</h3>
+      <p>米国に上場している企業、米国投資家からの資金調達比率が高い企業、米国の金融規制・
+      商慣習との整合性を重視する企業が採用する。日本国内では採用企業数は少数派。</p>
+
+      <div class="example-chip">実機検証済み：<span class="company">野村ホールディングス株式会社</span>（証券コード 8604）</div>
+    </div>
+  </section>
+
+  <section>
+    <h2>3基準の比較</h2>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>観点</th>
+            <th>日本基準</th>
+            <th>IFRS</th>
+            <th>米国基準</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>策定主体</td>
+            <td>企業会計基準委員会</td>
+            <td>国際会計基準審議会</td>
+            <td>財務会計基準審議会</td>
+          </tr>
+          <tr>
+            <td>基本的な考え方</td>
+            <td>取得原価主義＋一部時価評価</td>
+            <td>原則主義・公正価値評価が広い</td>
+            <td>細則主義・詳細なルール</td>
+          </tr>
+          <tr>
+            <td>のれんの扱い</td>
+            <td>償却する</td>
+            <td>償却しない（減損テストのみ）</td>
+            <td>償却しない（減損テストのみ）</td>
+          </tr>
+          <tr>
+            <td>採用企業の傾向</td>
+            <td>国内投資家中心（多数派）</td>
+            <td>グローバル企業・M&amp;Aが多い企業</td>
+            <td>米国上場・ADR発行企業（少数派）</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="spectrum">
+      <div class="spectrum-track">
+        <div class="dot" style="left: 18%;">
+          <span class="dot-label" style="left:0;">日本基準</span>
+        </div>
+        <div class="dot" style="left: 62%;">
+          <span class="dot-label" style="left:0;">IFRS</span>
+        </div>
+        <div class="dot" style="left: 92%;">
+          <span class="dot-label" style="left:-30%;">米国基準</span>
+        </div>
+      </div>
+      <div class="spectrum-labels">
+        <span>原則主義寄り ←</span>
+        <span>→ 細則主義寄り</span>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>EDINETデータでの見分け方</h2>
+    <p class="lede">有価証券報告書のCSVには <code>jpdei_cor:AccountingStandardsDEI</code>
+    （会計基準、DEI）という要素が必ず含まれており、この値を見れば会計基準を直接判定できる。</p>
+
+    <div class="table-wrap dei-table">
+      <table>
+        <thead>
+          <tr>
+            <th>会計基準</th>
+            <th>実際の値（実機検証済み）</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>日本基準</td><td><code>"Japan GAAP"</code></td></tr>
+          <tr><td>IFRS</td><td><code>"IFRS"</code></td></tr>
+          <tr><td>米国基準</td><td><code>"US GAAP"</code></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout">
+      <strong>⚠️ 既存ドキュメントの誤りを修正</strong><br />
+      <code>docs/domain/accounting_standards.md</code>には、この値が
+      <code>"JapaneseGAAP"</code>・<code>"UnitedStatesGAAP"</code>（スペースなし）と
+      誤って想定されていた。実機検証の結果、実際にはスペースが入ることが判明したため、
+      実装時はこの値をそのまま使う。
+    </div>
+
+    <p style="margin-top:1.4rem;">この発見により、<code>docs/requirements/cycle2_requirements.md</code>
+    FR-06（会計基準の自動判定）で「未解決」としていた問題は解決した。CSVの要素の名前空間を
+    推測する必要はなく、DEI要素を1つ読むだけで確実に判定できる。</p>
+  </section>
+
+</main>
+
+<footer>
+  サイクル2 設計フェーズ・実機検証結果に基づく。対象：リクルートホールディングス（IFRS）・
+  任天堂（日本基準）・野村ホールディングス（米国基準）・トヨタ自動車（IFRS）。
+</footer>
+
+</body>
+</html>

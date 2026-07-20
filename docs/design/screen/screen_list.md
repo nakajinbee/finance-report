@@ -2,6 +2,7 @@
 
 | No | 画面ID | 画面名 | 概要 | 画面項目定義 |
 |----|--------|--------|------|------|
-| 1 | SCR-001 | ダウンロード画面 | EDINET から対象企業の財務データを取得し DB に保存する | [items/SCR-001_items.md](items/SCR-001_items.md) |
+| 1 | SCR-001 | ダウンロード画面 | EDINET から検索・選択した企業の財務データを、指定期間分取得しDBに保存する（サイクル2で企業検索・期間指定に対応） | [items/SCR-001_items.md](items/SCR-001_items.md) |
 | 2 | SCR-002 | 企業一覧画面 | DB に保存済みの企業をカード形式で一覧表示する | [items/SCR-002_items.md](items/SCR-002_items.md) |
-| 3 | SCR-003 | 企業詳細画面 | 選択した企業の財務指標を5期分の棒グラフで表示する | [items/SCR-003_items.md](items/SCR-003_items.md) |
+| 3 | SCR-003 | 企業詳細画面 | 選択した企業の財務指標を年度範囲指定の棒グラフとキャッシュフロー表で表示する（サイクル2で年度範囲指定・CF表に対応） | [items/SCR-003_items.md](items/SCR-003_items.md) |
+| 4 | SCR-004 | 保存済みデータ確認画面（サイクル2新規） | TBL-003 factsの生データを一覧表示する確認用画面 | [items/SCR-004_items.md](items/SCR-004_items.md) |

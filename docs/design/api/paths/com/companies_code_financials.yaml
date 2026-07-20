@@ -1,7 +1,13 @@
 get:
   x-api-id: API-COM-002
   summary: 企業財務データ取得
-  description: 指定した証券コードの企業の財務データを全期分返す。
+  description: |
+    指定した証券コードの企業の財務データ（売上高・営業利益・純利益・総資産・負債合計の5指標、
+    サイクル1と同じ形）を返す。データソースはTBL-003 facts（サイクル2）だが、レスポンス形は
+    サイクル1から変えていない（画面側の変更を最小化するため）。
+    サーバー側は、企業のcompanies.accounting_standardに応じた会計基準別の
+    element_idマッピング（xbrl_parser.pyの各パーサーが持つマッピングと同じもの）を使って、
+    factsテーブルから5指標を引き当てる。
   operationId: getCompanyFinancials
   parameters:
     - name: code
@@ -11,6 +17,20 @@ get:
       schema:
         type: string
         example: '6098'
+    - name: from_year
+      in: query
+      required: false
+      description: 表示する会計年度の開始年（FR-12）。未指定時はDBに保存済みの最も古い年度
+      schema:
+        type: integer
+        example: 2020
+    - name: to_year
+      in: query
+      required: false
+      description: 表示する会計年度の終了年（FR-12）。未指定時はDBに保存済みの最も新しい年度
+      schema:
+        type: integer
+        example: 2024
   responses:
     '200':
       description: 財務データ
@@ -18,6 +38,12 @@ get:
         application/json:
           schema:
             $ref: '../../components/schemas/CompanyFinancials.yaml'
+    '400':
+      description: from_year・to_yearの指定が不正（from_year > to_year等）
+      content:
+        application/json:
+          schema:
+            $ref: '../../components/schemas/Error.yaml'
     '404':
       description: 指定した企業が存在しない
       content:

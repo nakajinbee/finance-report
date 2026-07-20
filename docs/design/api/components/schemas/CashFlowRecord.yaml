@@ -1,0 +1,26 @@
+type: object
+description: FR-13。1期分の営業・投資・財務キャッシュフロー
+properties:
+  fiscal_year:
+    type: string
+    description: 表示用会計年度
+    example: 2026年3月期
+  period_end:
+    type: string
+    format: date
+    example: '2026-03-31'
+  operating_cash_flow:
+    type: number
+    nullable: true
+    description: 営業活動によるキャッシュ・フロー（円）
+    example: 669431000000
+  investing_cash_flow:
+    type: number
+    nullable: true
+    description: 投資活動によるキャッシュ・フロー（円）
+    example: -49742000000
+  financing_cash_flow:
+    type: number
+    nullable: true
+    description: 財務活動によるキャッシュ・フロー（円）
+    example: -743478000000

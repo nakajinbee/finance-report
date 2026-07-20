@@ -16,7 +16,8 @@ properties:
           example: 2023年3月期
         status:
           type: string
-          enum: [pending, in_progress, done, error]
+          enum: [pending, in_progress, done, skipped, error]
+          description: skipped=既存データがあるためEDINETへの再アクセスをスキップした（FR-11、サイクル2で追加）
         message:
           type: string
           example: 取得完了
