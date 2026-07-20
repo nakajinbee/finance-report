@@ -6,6 +6,7 @@ import {
   type CashFlowRecord,
   type CompanyFinancials,
 } from "../api/client";
+import { CashFlowChart } from "../components/CashFlowChart";
 import { CashFlowTable } from "../components/CashFlowTable";
 import { ErrorMessage } from "../components/ErrorMessage";
 import { FinancialChart } from "../components/FinancialChart";
@@ -189,7 +190,11 @@ export function CompanyDetailPage() {
       )}
 
       {financials.data.length > 0 && (
-        <CashFlowTable financialRecords={financials.data} cashFlowRecords={cashFlow} />
+        <div className="space-y-2">
+          <h2 className="font-medium">キャッシュフロー計算書</h2>
+          <CashFlowChart records={cashFlow} />
+          <CashFlowTable financialRecords={financials.data} cashFlowRecords={cashFlow} />
+        </div>
       )}
     </div>
   );

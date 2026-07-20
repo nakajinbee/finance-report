@@ -127,6 +127,10 @@ export function DownloadPage() {
 
   return (
     <div className="mx-auto max-w-xl space-y-6 p-8">
+      <button type="button" onClick={() => navigate("/companies")} className="text-sm text-gray-500">
+        ← 企業一覧へ
+      </button>
+
       <h1 className="text-xl font-semibold">データ取得</h1>
 
       <div className="space-y-2">

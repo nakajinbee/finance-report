@@ -17,7 +17,6 @@ export function CashFlowTable({ financialRecords, cashFlowRecords }: CashFlowTab
 
   return (
     <div className="space-y-2">
-      <h2 className="font-medium">キャッシュフロー計算書</h2>
       <div className="overflow-x-auto">
         <table className="w-full min-w-max border-collapse text-sm">
           <thead>
