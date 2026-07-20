@@ -3,8 +3,8 @@ from datetime import date
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 
+import metric_mappings
 import schemas
-import xbrl_parser
 from database import Company, Fact, SessionLocal
 
 # SCR-002（企業一覧画面）・SCR-003（企業詳細画面、docs/design/screen/配下）向けの
@@ -17,18 +17,17 @@ from database import Company, Fact, SessionLocal
 #   - API-COM-004（facts、SCR-004 保存済みデータ確認画面向け）：エンドポイント自体が未実装
 router = APIRouter()
 
-# TODO(cycle2 FR-06): Fact.element_id -> 5指標名 の逆引き。xbrl_parser.pyがIFRS用の5指標だけを
-# 抽出する設計（サイクル1のまま）のため。会計基準3種対応に沿った本実装は次のステップで行う。
-_ELEMENT_ID_TO_METRIC_NAME = {
-    element_id: metric_name
-    for metric_name, (element_id, _context_id) in xbrl_parser.IfrsXbrlCsvParser._ELEMENT_ID_TO_METRIC.items()
-}
 
+def _build_financial_records(facts: list[Fact], accounting_standard: str) -> list[schemas.FinancialRecord]:
+    """企業の会計基準に応じたmetric_mappings.FIVE_METRICSを使い、factsから5指標を組み立てる"""
+    element_id_to_metric_name = {
+        element_id: metric_name
+        for metric_name, (element_id, _context_id) in metric_mappings.FIVE_METRICS.get(accounting_standard, {}).items()
+    }
 
-def _build_financial_records(facts: list[Fact]) -> list[schemas.FinancialRecord]:
     values_by_period: dict[date, dict[str, int]] = {}
     for fact in facts:
-        metric_name = _ELEMENT_ID_TO_METRIC_NAME.get(fact.element_id)
+        metric_name = element_id_to_metric_name.get(fact.element_id)
         if metric_name is None:
             continue
         values_by_period.setdefault(fact.period_end, {})[metric_name] = int(fact.value)
@@ -99,7 +98,7 @@ def get_company_financials(code: str):
             )
 
         facts = session.query(Fact).filter_by(company_code=code).order_by(Fact.period_end).all()
-        records = _build_financial_records(facts)
+        records = _build_financial_records(facts, company.accounting_standard)
 
         return schemas.CompanyFinancials(
             company=schemas.Company(

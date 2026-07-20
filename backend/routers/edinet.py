@@ -13,7 +13,9 @@ from database import Company, Fact, SessionLocal
 #
 # TODO(cycle2): docs/design/api/paths/edinet/ 配下（openapi.yaml）はサイクル2向けに改訂済みだが、
 # このファイルの実装はまだサイクル1のAPI仕様のまま（このコメントの下に個別箇所を明記）。
-# サイクル2実装（FR-06〜FR-11）は次のステップで行う。
+# FR-04（全数値データ取り込み）・FR-06（会計基準の判定）は対応済み。
+# 残るFR-07（企業検索）・FR-09（決算日を使った動的探索）・FR-10（企業単位の排他制御）は
+# 次のステップで行う。
 router = APIRouter()
 
 # サイクル1はリクルートHD固定（docs/development/backend_implementation_policy.md
@@ -25,7 +27,6 @@ router = APIRouter()
 RECRUIT_DB_CODE = "6098"
 RECRUIT_EDINET_SEC_CODE = "60980"
 RECRUIT_EDINET_CODE = "E07801"
-RECRUIT_ACCOUNTING_STANDARD = "IFRS"
 # 有価証券報告書の提出日探索の起点（3月決算・6月中旬提出が中心という実機検証結果に基づく）
 #
 # TODO(cycle2 FR-09、重要): cycle2_requirements.md FR-09で「探索起点日は企業の決算月から
@@ -68,37 +69,35 @@ def _upsert_company(session, company_code: str, name: str, sector: str | None, a
 
 
 def _upsert_facts(
-    session, company_code: str, doc_id: str, doc_type_code: str, period_end: date, metrics: xbrl_parser.FinancialMetrics
+    session, company_code: str, doc_id: str, doc_type_code: str, period_end: date, facts: list[xbrl_parser.NumericFact]
 ) -> None:
-    """FinancialMetricsの5指標をTBL-003 factsへ保存する
-
-    TODO(cycle2 FR-04/FR-06): xbrl_parser.pyがまだ5指標だけを抽出する設計（サイクル1のまま）のため、
-    ここではIFRS用の要素ID・コンテキストIDのマッピングを流用している。
-    FR-04（全数値データの取り込み）・FR-06（会計基準3種対応）に沿った本実装は次のステップで行う。
-    """
-    element_map = xbrl_parser.IfrsXbrlCsvParser._ELEMENT_ID_TO_METRIC
-    metric_values = {
-        "revenue": metrics.revenue,
-        "operating_profit": metrics.operating_profit,
-        "net_profit": metrics.net_profit,
-        "total_assets": metrics.total_assets,
-        "total_liabilities": metrics.total_liabilities,
-    }
-    for metric_name, value in metric_values.items():
-        if value is None:
-            continue
-        element_id, context_id = element_map[metric_name]
+    """CSVから抽出した数値データ(NumericFact)をすべてTBL-003 factsへ保存する（FR-04）"""
+    for numeric_fact in facts:
         fact = (
             session.query(Fact)
-            .filter_by(company_code=company_code, doc_id=doc_id, element_id=element_id, context_id=context_id)
+            .filter_by(
+                company_code=company_code,
+                doc_id=doc_id,
+                element_id=numeric_fact.element_id,
+                context_id=numeric_fact.context_id,
+            )
             .one_or_none()
         )
         if fact is None:
-            fact = Fact(company_code=company_code, doc_id=doc_id, element_id=element_id, context_id=context_id)
+            fact = Fact(
+                company_code=company_code,
+                doc_id=doc_id,
+                element_id=numeric_fact.element_id,
+                context_id=numeric_fact.context_id,
+            )
             session.add(fact)
         fact.doc_type_code = doc_type_code
         fact.period_end = period_end
-        fact.value = value
+        fact.element_name = numeric_fact.element_name
+        fact.consolidated_or_individual = numeric_fact.consolidated_or_individual
+        fact.period_or_instant = numeric_fact.period_or_instant
+        fact.unit = numeric_fact.unit
+        fact.value = numeric_fact.value
 
 
 def run_download_job() -> None:
@@ -118,7 +117,15 @@ def run_download_job() -> None:
     session = SessionLocal()
     try:
         filer_info = edinet_client.fetch_filer_info(RECRUIT_EDINET_CODE)
-        _upsert_company(session, RECRUIT_DB_CODE, filer_info.name, filer_info.sector, RECRUIT_ACCOUNTING_STANDARD)
+        # 会計基準はハードコードせず、実際のCSVのDEI要素から確定させる（最初の1期分で判定すれば
+        # 十分。同一企業が期によって会計基準を変えることは通常ないため）
+        first_year_document = edinet_client.search_annual_report(
+            RECRUIT_EDINET_SEC_CODE, date(target_years[0], ANNUAL_REPORT_SEARCH_MONTH, ANNUAL_REPORT_SEARCH_DAY)
+        )
+        first_year_csv_bytes = edinet_client.fetch_annual_report_csv(first_year_document["docID"])
+        accounting_standard = xbrl_parser.extract_accounting_standard(first_year_csv_bytes)
+
+        _upsert_company(session, RECRUIT_DB_CODE, filer_info.name, filer_info.sector, accounting_standard)
         session.commit()
 
         any_success = False
@@ -126,14 +133,19 @@ def run_download_job() -> None:
             _state.logs[i].status = schemas.DownloadLogStatus.IN_PROGRESS
             _state.logs[i].message = "取得中"
             try:
-                document = edinet_client.search_annual_report(
-                    RECRUIT_EDINET_SEC_CODE, date(year, ANNUAL_REPORT_SEARCH_MONTH, ANNUAL_REPORT_SEARCH_DAY)
-                )
-                csv_bytes = edinet_client.fetch_annual_report_csv(document["docID"])
-                metrics = xbrl_parser.get_parser(RECRUIT_ACCOUNTING_STANDARD).parse(csv_bytes)
+                if year == target_years[0]:
+                    # 会計基準判定のために既に取得済み
+                    document, csv_bytes = first_year_document, first_year_csv_bytes
+                else:
+                    document = edinet_client.search_annual_report(
+                        RECRUIT_EDINET_SEC_CODE, date(year, ANNUAL_REPORT_SEARCH_MONTH, ANNUAL_REPORT_SEARCH_DAY)
+                    )
+                    csv_bytes = edinet_client.fetch_annual_report_csv(document["docID"])
+
+                facts = xbrl_parser.parse_numeric_facts(csv_bytes)
 
                 period_end = date.fromisoformat(document["periodEnd"])
-                _upsert_facts(session, RECRUIT_DB_CODE, document["docID"], document["docTypeCode"], period_end, metrics)
+                _upsert_facts(session, RECRUIT_DB_CODE, document["docID"], document["docTypeCode"], period_end, facts)
                 session.commit()
 
                 _state.logs[i].status = schemas.DownloadLogStatus.DONE

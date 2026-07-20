@@ -1,22 +1,11 @@
 import csv
 import io
-from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from decimal import Decimal, InvalidOperation
 
 
 class XbrlParseError(Exception):
-    """CSVのパースに失敗した場合（フォーマット不正・ヘッダ不一致等）"""
-
-
-@dataclass
-class FinancialMetrics:
-    """CSV1件（＝書類1件＝1期分）から抽出した5指標"""
-
-    revenue: int | None
-    operating_profit: int | None
-    net_profit: int | None
-    total_assets: int | None
-    total_liabilities: int | None
+    """CSVのパースに失敗した場合（フォーマット不正・ヘッダ不一致・要素が見つからない等）"""
 
 
 EXPECTED_CSV_HEADER = [
@@ -31,69 +20,85 @@ EXPECTED_CSV_HEADER = [
     "値",
 ]
 
-_CONTEXT_ID_CURRENT_DURATION = "CurrentYearDuration"
-_CONTEXT_ID_CURRENT_INSTANT = "CurrentYearInstant"
+# テキストブロック要素（事業の内容等の長文記載）は単位列が"－"になる（FR-04で対象外とする）
+_TEXT_BLOCK_UNIT = "－"
+
+ACCOUNTING_STANDARD_ELEMENT_ID = "jpdei_cor:AccountingStandardsDEI"
+ACCOUNTING_STANDARD_CONTEXT_ID = "FilingDateInstant"
 
 
-class XbrlCsvParser(ABC):
-    """会計基準ごとのCSVパーサーの共通インターフェース"""
+@dataclass
+class NumericFact:
+    """CSV1行分の数値データ（TBL-003 facts の1行に対応）"""
 
-    @abstractmethod
-    def parse(self, csv_bytes: bytes) -> FinancialMetrics:
-        """1期分のCSV（提出本文書CSV）から5指標を抽出して返す"""
+    element_id: str
+    element_name: str | None
+    context_id: str
+    consolidated_or_individual: str | None
+    period_or_instant: str | None
+    unit: str | None
+    value: Decimal
 
 
-class IfrsXbrlCsvParser(XbrlCsvParser):
-    """IFRS企業向けの実装（サイクル1のスコープ、リクルートHDで実機検証済み）
+def _read_csv_rows(csv_bytes: bytes) -> csv.DictReader:
+    try:
+        text = csv_bytes.decode("utf-16")
+    except UnicodeDecodeError as e:
+        raise XbrlParseError(f"CSVの文字コードがUTF-16として読み取れません: {e}") from e
 
-    要素ID・コンテキストIDは docs/requirements/cycle1_requirements.md FR-01 参照。
+    reader = csv.DictReader(io.StringIO(text), delimiter="\t")
+    if reader.fieldnames is None or list(reader.fieldnames) != EXPECTED_CSV_HEADER:
+        raise XbrlParseError(f"CSVのヘッダが想定と異なります: {reader.fieldnames}")
+    return reader
+
+
+def parse_numeric_facts(csv_bytes: bytes) -> list[NumericFact]:
+    """提出本文書CSVから数値データの行をすべて抽出する（FR-04）
+
+    会計基準（IFRS/日本基準/米国基準）を問わず、CSVの列構造は共通のため、
+    この関数は会計基準を意識しない。会計基準ごとに「どの要素IDが売上高か」といった
+    マッピングは backend/metric_mappings.py（API層側の関心事）を参照。
     """
+    reader = _read_csv_rows(csv_bytes)
 
-    _ELEMENT_ID_TO_METRIC: dict[str, tuple[str, str]] = {
-        "revenue": ("jpcrp_cor:RevenueIFRSSummaryOfBusinessResults", _CONTEXT_ID_CURRENT_DURATION),
-        "operating_profit": ("jpigp_cor:OperatingProfitLossIFRS", _CONTEXT_ID_CURRENT_DURATION),
-        "net_profit": (
-            "jpcrp_cor:ProfitLossAttributableToOwnersOfParentIFRSSummaryOfBusinessResults",
-            _CONTEXT_ID_CURRENT_DURATION,
-        ),
-        "total_assets": ("jpcrp_cor:TotalAssetsIFRSSummaryOfBusinessResults", _CONTEXT_ID_CURRENT_INSTANT),
-        "total_liabilities": ("jpigp_cor:LiabilitiesIFRS", _CONTEXT_ID_CURRENT_INSTANT),
-    }
-
-    def parse(self, csv_bytes: bytes) -> FinancialMetrics:
-        values_by_element_and_context = self._read_values_by_element_and_context(csv_bytes)
-
-        metric_values: dict[str, int | None] = {}
-        for metric_name, (element_id, context_id) in self._ELEMENT_ID_TO_METRIC.items():
-            raw_value = values_by_element_and_context.get((element_id, context_id))
-            metric_values[metric_name] = int(raw_value) if raw_value not in (None, "") else None
-
-        return FinancialMetrics(**metric_values)
-
-    def _read_values_by_element_and_context(self, csv_bytes: bytes) -> dict[tuple[str, str], str]:
+    facts_by_key: dict[tuple[str, str], NumericFact] = {}
+    for row in reader:
+        if row["単位"] == _TEXT_BLOCK_UNIT:
+            continue  # テキストブロック行は除外(FR-04)
         try:
-            text = csv_bytes.decode("utf-16")
-        except UnicodeDecodeError as e:
-            raise XbrlParseError(f"CSVの文字コードがUTF-16として読み取れません: {e}") from e
+            value = Decimal(row["値"])
+        except (InvalidOperation, KeyError):
+            continue
 
-        reader = csv.DictReader(io.StringIO(text), delimiter="\t")
-        if reader.fieldnames is None or list(reader.fieldnames) != EXPECTED_CSV_HEADER:
-            raise XbrlParseError(f"CSVのヘッダが想定と異なります: {reader.fieldnames}")
+        # 同一(要素ID, コンテキストID)が複数行存在することがある（実データ検証済み）ため、
+        # 最初の行を採用する
+        key = (row["要素ID"], row["コンテキストID"])
+        facts_by_key.setdefault(
+            key,
+            NumericFact(
+                element_id=row["要素ID"],
+                element_name=row["項目名"] or None,
+                context_id=row["コンテキストID"],
+                consolidated_or_individual=row["連結・個別"] or None,
+                period_or_instant=row["期間・時点"] or None,
+                unit=row["単位"] or None,
+                value=value,
+            ),
+        )
 
-        values_by_element_and_context: dict[tuple[str, str], str] = {}
-        for row in reader:
-            key = (row["要素ID"], row["コンテキストID"])
-            # 同一キーが複数行存在する場合があるため、最初に見つかった値を採用する
-            values_by_element_and_context.setdefault(key, row["値"])
-
-        return values_by_element_and_context
+    return list(facts_by_key.values())
 
 
-def get_parser(accounting_standard: str) -> XbrlCsvParser:
-    """TBL-001.accounting_standard の値からパーサーを選ぶファクトリ関数
+def extract_accounting_standard(csv_bytes: bytes) -> str:
+    """CSVのDEI要素から会計基準を読み取る（FR-06、実機検証済み）
 
-    未対応の会計基準はサイレントに間違った値を返さないよう、即座にエラーとする。
+    戻り値は "IFRS" / "Japan GAAP" / "US GAAP" のいずれか（EDINETのDEI要素の値そのまま）。
+    この要素は単位が"－"のテキスト値のため parse_numeric_facts の対象外であり、
+    別関数として読む必要がある。
     """
-    if accounting_standard == "IFRS":
-        return IfrsXbrlCsvParser()
-    raise NotImplementedError(f"未対応の会計基準です: {accounting_standard}")
+    reader = _read_csv_rows(csv_bytes)
+    for row in reader:
+        if row["要素ID"] == ACCOUNTING_STANDARD_ELEMENT_ID and row["コンテキストID"] == ACCOUNTING_STANDARD_CONTEXT_ID:
+            return row["値"]
+
+    raise XbrlParseError(f"{ACCOUNTING_STANDARD_ELEMENT_ID} が見つかりません")
