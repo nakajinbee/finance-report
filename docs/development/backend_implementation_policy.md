@@ -92,6 +92,7 @@ backend/
 - カラム名・変数名は設計書（TBL-001/002、openapi.yamlのスキーマ）の命名にそのまま合わせる（変換の揺れを作らない）
 - 日付・時刻の型とフォーマットは[date_format_policy.md](date_format_policy.md)に従う（`date`と`datetime`を混在させない、UTC変換をしない等）
 - APIキーや接続文字列はコードにハードコードしない（`.env`経由のみ）
+- EDINETからダウンロードしたZIP/CSVはディスクに書き出さず、メモリ上でパース→DB保存まで完結させる（`docs/design/cycle1_design.md`の「ダウンロードデータの取り扱い方針」参照。並行リクエストでのファイル名衝突を設計上起こさないための方針）
 - テストフレームワーク（pytest等）は現時点では未導入。ロジックが複雑化した段階（パーサーの分岐が増える等）で改めて検討する。現状は`docs/development/self_review_rule.md`に沿った手動確認で担保する
 
 ---
