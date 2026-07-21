@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { FinancialRecord } from "../api/client";
 import { FinancialChart } from "./FinancialChart";
+import { FinancialMetricTable } from "./FinancialMetricTable";
 import { MetricSelector } from "./MetricSelector";
 import type { MetricDefinition, MetricKey } from "../lib/metrics";
 
@@ -40,6 +41,7 @@ export function FinancialMetricSection({ title, records, definitions }: Financia
       ) : (
         <FinancialChart records={records} definitions={definitions} activeMetrics={activeMetrics} />
       )}
+      <FinancialMetricTable records={records} definitions={definitions} />
     </div>
   );
 }

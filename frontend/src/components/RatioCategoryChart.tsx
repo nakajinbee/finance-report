@@ -55,6 +55,11 @@ function ChartTooltip({
   );
 }
 
+function unitsFor(definitions: RatioMetricDefinition[], axis: "left" | "right"): string {
+  const units = Array.from(new Set(definitions.filter((d) => (d.axis ?? "left") === axis).map((d) => d.unit)));
+  return units.join("・");
+}
+
 export function RatioCategoryChart({ records, definitions, activeKeys }: RatioCategoryChartProps) {
   const chartData = toChartData(records, definitions);
   const activeDefinitions = definitions.filter((metric) => activeKeys.has(metric.key));
@@ -67,11 +72,11 @@ export function RatioCategoryChart({ records, definitions, activeKeys }: RatioCa
         <XAxis dataKey="fiscal_year" />
         {hasDualAxis ? (
           <>
-            <YAxis yAxisId="left" />
-            <YAxis yAxisId="right" orientation="right" />
+            <YAxis yAxisId="left" unit={unitsFor(definitions, "left")} />
+            <YAxis yAxisId="right" orientation="right" unit={unitsFor(definitions, "right")} />
           </>
         ) : (
-          <YAxis />
+          <YAxis unit={definitions[0]?.unit} />
         )}
         <Tooltip content={<ChartTooltip records={records} definitions={definitions} activeKeys={activeKeys} />} />
         <Legend />
