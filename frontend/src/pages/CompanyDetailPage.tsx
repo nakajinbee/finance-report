@@ -3,14 +3,17 @@ import { useNavigate, useParams } from "react-router-dom";
 import {
   getCompanyCashFlow,
   getCompanyFinancials,
+  getCompanyRatios,
   type CashFlowRecord,
   type CompanyFinancials,
+  type RatioRecord,
 } from "../api/client";
 import { CashFlowChart } from "../components/CashFlowChart";
 import { CashFlowTable } from "../components/CashFlowTable";
 import { ErrorMessage } from "../components/ErrorMessage";
 import { FinancialChart } from "../components/FinancialChart";
 import { MetricSelector } from "../components/MetricSelector";
+import { RatioSection } from "../components/RatioSection";
 import { METRIC_DEFINITIONS, type MetricKey } from "../lib/metrics";
 
 type LoadState = "loading" | "loaded" | "not_found" | "error";
@@ -26,6 +29,7 @@ export function CompanyDetailPage() {
   const [loadState, setLoadState] = useState<LoadState>("loading");
   const [financials, setFinancials] = useState<CompanyFinancials | null>(null);
   const [cashFlow, setCashFlow] = useState<CashFlowRecord[]>([]);
+  const [ratios, setRatios] = useState<RatioRecord[]>([]);
   const [availableYears, setAvailableYears] = useState<number[]>([]);
   const [fromYear, setFromYear] = useState<number | null>(null);
   const [toYear, setToYear] = useState<number | null>(null);
@@ -71,14 +75,19 @@ export function CompanyDetailPage() {
     }
     let cancelled = false;
     setLoadState((current) => (current === "loaded" ? current : "loading"));
-    Promise.all([getCompanyFinancials(code, fromYear, toYear), getCompanyCashFlow(code, fromYear, toYear)]).then(
-      ([financialsResult, cashFlowResult]) => {
+    Promise.all([
+      getCompanyFinancials(code, fromYear, toYear),
+      getCompanyCashFlow(code, fromYear, toYear),
+      getCompanyRatios(code, fromYear, toYear),
+    ]).then(
+      ([financialsResult, cashFlowResult, ratiosResult]) => {
         if (cancelled) {
           return;
         }
         if (financialsResult.ok) {
           setFinancials(financialsResult.data);
           setCashFlow(cashFlowResult.ok ? cashFlowResult.data : []);
+          setRatios(ratiosResult.ok ? ratiosResult.data : []);
           setLoadState("loaded");
         } else if (financialsResult.error.error === "COMPANY_NOT_FOUND") {
           setLoadState("not_found");
@@ -195,6 +204,10 @@ export function CompanyDetailPage() {
           <CashFlowChart records={cashFlow} />
           <CashFlowTable financialRecords={financials.data} cashFlowRecords={cashFlow} />
         </div>
+      )}
+
+      {financials.data.length > 0 && (
+        <RatioSection financialRecords={financials.data} ratioRecords={ratios} />
       )}
     </div>
   );

@@ -102,6 +102,25 @@ class CashFlowRecord(BaseModel):
     financing_cash_flow: int | None = None
 
 
+class RatioRecord(BaseModel):
+    """docs/design/api/components/schemas/RatioRecord.yaml（FR-23〜26）"""
+
+    fiscal_year: str
+    period_end: date
+    roe: float | None = None
+    equity_ratio: float | None = None
+    eps: float | None = None
+    per: float | None = None
+    payout_ratio: float | None = None
+    roa: float | None = None
+    total_asset_turnover: float | None = None
+    operating_margin: float | None = None
+    net_margin: float | None = None
+    current_ratio: float | None = None
+    fixed_ratio: float | None = None
+    inventory_turnover: float | None = None
+
+
 class FactRecord(BaseModel):
     """docs/design/api/components/schemas/FactRecord.yaml（FR-16、SCR-004向け）"""
 

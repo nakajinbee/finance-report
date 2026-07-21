@@ -1,0 +1,56 @@
+get:
+  x-api-id: API-COM-005
+  summary: 企業財務分析指標取得
+  description: |
+    指定した証券コードの企業の財務分析指標（ROE・自己資本比率・流動比率・棚卸資産回転率等）を
+    期間分返す（FR-23〜26）。
+    EDINET自己開示の比率（グループA）を優先し、開示がない指標のみTBL-003 factsの生データから
+    計算する（グループB・C）。API-COM-002と同じ理由で、有価証券報告書（docTypeCode: 120）
+    由来のfactsのみを対象とする。
+  operationId: getCompanyRatios
+  parameters:
+    - name: code
+      in: path
+      required: true
+      schema:
+        type: string
+        example: '6098'
+    - name: from_year
+      in: query
+      required: false
+      schema:
+        type: integer
+        example: 2020
+    - name: to_year
+      in: query
+      required: false
+      schema:
+        type: integer
+        example: 2024
+  responses:
+    '200':
+      description: 財務分析指標データ
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              $ref: '../../components/schemas/RatioRecord.yaml'
+    '400':
+      description: from_year・to_yearの指定が不正（from_year > to_year等）
+      content:
+        application/json:
+          schema:
+            $ref: '../../components/schemas/Error.yaml'
+    '404':
+      description: 指定した企業が存在しない
+      content:
+        application/json:
+          schema:
+            $ref: '../../components/schemas/Error.yaml'
+    '500':
+      description: サーバーエラー
+      content:
+        application/json:
+          schema:
+            $ref: '../../components/schemas/Error.yaml'

@@ -87,3 +87,46 @@ CASH_FLOW: dict[str, dict[str, list[str]]] = {
 # 経営指標等サマリーが個別（非連結）ベースのみで提出される企業向けのコンテキストIDフォールバック
 # サフィックス（連結子会社を持たない企業向け、FR-18。大本組で確認済み）
 NON_CONSOLIDATED_CONTEXT_SUFFIX = "_NonConsolidatedMember"
+
+# グループA：EDINET自己開示の比率指標（FR-23）。値はローカル名の候補リスト
+DISCLOSED_RATIO_CONTEXT_ID = "CurrentYearDuration"
+DISCLOSED_RATIOS: dict[str, dict[str, list[str]]] = {
+    "IFRS": {
+        "roe": ["RateOfReturnOnEquityIFRSSummaryOfBusinessResults"],
+        "equity_ratio": ["RatioOfOwnersEquityToGrossAssetsIFRSSummaryOfBusinessResults"],
+        "eps": ["BasicEarningsLossPerShareIFRSSummaryOfBusinessResults"],
+        "per": ["PriceEarningsRatioIFRSSummaryOfBusinessResults"],
+    },
+    "Japan GAAP": {
+        "roe": ["RateOfReturnOnEquitySummaryOfBusinessResults"],
+        "equity_ratio": ["EquityToAssetRatioSummaryOfBusinessResults"],
+        "eps": ["BasicEarningsLossPerShareSummaryOfBusinessResults"],
+        "per": ["PriceEarningsRatioSummaryOfBusinessResults"],
+        "payout_ratio": ["PayoutRatioSummaryOfBusinessResults"],
+    },
+    # US GAAP：経営指標等サマリーにこれらの比率が開示されているか未確認のため、
+    # 確認できるまでは空のままとする（FR-23、未検証のタグを憶測で追加しない方針を踏襲）
+    "US GAAP": {},
+}
+
+# グループC：比率計算に必要な追加の貸借対照表項目（FR-25）。値はローカル名の候補リスト
+BALANCE_SHEET_CONTEXT_ID = "CurrentYearInstant"
+BALANCE_SHEET_ITEMS: dict[str, dict[str, list[str]]] = {
+    "IFRS": {
+        "current_assets": ["CurrentAssetsIFRS"],
+        "current_liabilities": ["TotalCurrentLiabilitiesIFRS"],
+        "non_current_assets": ["NonCurrentAssetsIFRS"],
+        "equity": ["EquityIFRS"],
+        "inventories": ["InventoriesCAIFRS"],
+    },
+    "Japan GAAP": {
+        "current_assets": ["CurrentAssets"],
+        "current_liabilities": ["CurrentLiabilities"],
+        "non_current_assets": ["NoncurrentAssets"],
+        "equity": ["NetAssets"],
+        "inventories": ["Inventories"],
+    },
+    # US GAAP：FR-20と同じ理由（連結ベースの内訳が経営指標等・主財務諸表とも存在しない、
+    # 野村HD・オリックスで確認済み）で対象外
+    "US GAAP": {},
+}

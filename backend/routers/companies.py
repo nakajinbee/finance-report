@@ -36,15 +36,20 @@ def _local_name(element_id: str) -> str:
     return element_id.split(":")[-1]
 
 
-def _index_facts_by_period(facts: list[Fact]) -> dict[date, dict[tuple[str, str], int]]:
-    """factsを期間ごとに(ローカル名, コンテキストID)→値の辞書へ変換する（FR-17）"""
-    index: dict[date, dict[tuple[str, str], int]] = {}
+def _index_facts_by_period(facts: list[Fact]) -> dict[date, dict[tuple[str, str], float]]:
+    """factsを期間ごとに(ローカル名, コンテキストID)→値の辞書へ変換する（FR-17）
+
+    値はfloatのまま保持し、整数への丸めは呼び出し元（金額を扱う_build_financial_records等）
+    の責務とする。ROE・EPS等の比率指標は1未満の小数を取りうるため、ここでint化すると
+    精度が失われる（サイクル3 FR-23〜26の実装時に発見・修正）。
+    """
+    index: dict[date, dict[tuple[str, str], float]] = {}
     for fact in facts:
-        index.setdefault(fact.period_end, {})[(_local_name(fact.element_id), fact.context_id)] = int(fact.value)
+        index.setdefault(fact.period_end, {})[(_local_name(fact.element_id), fact.context_id)] = float(fact.value)
     return index
 
 
-def _lookup_metric(period_index: dict[tuple[str, str], int], candidates: list[str], context_id: str) -> int | None:
+def _lookup_metric(period_index: dict[tuple[str, str], float], candidates: list[str], context_id: str) -> float | None:
     """候補ローカル名を優先順に探し、最初に一致した値を返す（FR-17）
 
     連結子会社を持たない企業は経営指標等サマリーが個別ベースのみで提出され、
@@ -110,6 +115,69 @@ def _build_cash_flow_records(facts: list[Fact], accounting_standard: str) -> lis
                 operating_cash_flow=values.get("operating"),
                 investing_cash_flow=values.get("investing"),
                 financing_cash_flow=values.get("financing"),
+            )
+        )
+    return records
+
+
+def _safe_div(numerator: int | float | None, denominator: int | float | None) -> float | None:
+    """分子・分母のいずれかがNone、または分母が0の場合はNoneを返す（FR-26のエラー方針）"""
+    if numerator is None or denominator is None or denominator == 0:
+        return None
+    return numerator / denominator
+
+
+def _build_ratio_records(facts: list[Fact], accounting_standard: str) -> list[schemas.RatioRecord]:
+    """metric_mappings.DISCLOSED_RATIOS・BALANCE_SHEET_ITEMSを使い、財務分析指標を組み立てる
+
+    ROE・自己資本比率等はEDINET開示値を優先し、開示されていない指標のみ既存5指標・
+    貸借対照表項目から計算する（FR-23〜26、ユーザー承認済みの優先順位）。
+    """
+    disclosed_candidates = metric_mappings.DISCLOSED_RATIOS.get(accounting_standard, {})
+    balance_sheet_candidates = metric_mappings.BALANCE_SHEET_ITEMS.get(accounting_standard, {})
+    period_index = _index_facts_by_period(facts)
+    financial_by_period = {r.period_end: r for r in _build_financial_records(facts, accounting_standard)}
+
+    records = []
+    for period_end in sorted(period_index):
+        fin = financial_by_period.get(period_end)
+        if fin is None:
+            continue
+
+        disclosed = {
+            ratio_name: _lookup_metric(period_index[period_end], candidates, metric_mappings.DISCLOSED_RATIO_CONTEXT_ID)
+            for ratio_name, candidates in disclosed_candidates.items()
+        }
+        bs = {
+            item_name: _lookup_metric(period_index[period_end], candidates, metric_mappings.BALANCE_SHEET_CONTEXT_ID)
+            for item_name, candidates in balance_sheet_candidates.items()
+        }
+
+        equity_ratio = disclosed.get("equity_ratio")
+        if equity_ratio is None:
+            equity_ratio = _safe_div(bs.get("equity"), fin.total_assets)
+
+        values = {
+            "roe": disclosed.get("roe"),
+            "equity_ratio": equity_ratio,
+            "eps": disclosed.get("eps"),
+            "per": disclosed.get("per"),
+            "payout_ratio": disclosed.get("payout_ratio"),
+            "roa": _safe_div(fin.net_profit, fin.total_assets),
+            "total_asset_turnover": _safe_div(fin.revenue, fin.total_assets),
+            "operating_margin": _safe_div(fin.operating_profit, fin.revenue),
+            "net_margin": _safe_div(fin.net_profit, fin.revenue),
+            "current_ratio": _safe_div(bs.get("current_assets"), bs.get("current_liabilities")),
+            "fixed_ratio": _safe_div(bs.get("non_current_assets"), bs.get("equity")),
+            "inventory_turnover": _safe_div(fin.revenue, bs.get("inventories")),
+        }
+        if not any(value is not None for value in values.values()):
+            continue
+        records.append(
+            schemas.RatioRecord(
+                fiscal_year=fin.fiscal_year,
+                period_end=period_end,
+                **values,
             )
         )
     return records
@@ -214,6 +282,36 @@ def get_company_cash_flow(code: str, from_year: int | None = None, to_year: int 
         )
         facts = _filter_by_year_range(facts, from_year, to_year)
         return _build_cash_flow_records(facts, company.accounting_standard)
+    finally:
+        session.close()
+
+
+@router.get("/companies/{code}/ratios", response_model=list[schemas.RatioRecord])
+def get_company_ratios(code: str, from_year: int | None = None, to_year: int | None = None):
+    """API-COM-005: 指定企業の財務分析指標（ROE・流動比率等）を返す（SCR-003、FR-23〜26）"""
+    error = _validate_year_range(from_year, to_year)
+    if error is not None:
+        return JSONResponse(status_code=400, content=error.model_dump())
+
+    session = SessionLocal()
+    try:
+        company = session.get(Company, code)
+        if company is None:
+            return JSONResponse(
+                status_code=404,
+                content=schemas.ErrorResponse(
+                    error="COMPANY_NOT_FOUND", message="指定した企業が存在しません"
+                ).model_dump(),
+            )
+
+        facts = (
+            session.query(Fact)
+            .filter_by(company_code=code, doc_type_code=edinet_client.DOC_TYPE_CODE_ANNUAL_REPORT)
+            .order_by(Fact.period_end)
+            .all()
+        )
+        facts = _filter_by_year_range(facts, from_year, to_year)
+        return _build_ratio_records(facts, company.accounting_standard)
     finally:
         session.close()
 

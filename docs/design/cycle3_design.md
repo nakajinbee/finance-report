@@ -206,6 +206,112 @@ def _get(path, params) -> requests.Response:
 
 ---
 
+## 6. FR-23〜26：財務分析指標の拡充
+
+対象API：`GET /companies/{code}/ratios`（API-COM-005、新規）。SCR-003にCFグラフ・表と
+同じ並びで新セクションとして追加する（ユーザー承認済み、[cycle3_requirements.md](../requirements/cycle3_requirements.md)参照）。
+
+### データ構造（`backend/metric_mappings.py`に追加）
+
+```python
+# グループA：EDINET自己開示の比率（ローカル名候補リスト、FIVE_METRICSと同じ形式）
+DISCLOSED_RATIOS: dict[str, dict[str, list[str]]] = {
+    "IFRS": {
+        "roe": ["RateOfReturnOnEquityIFRSSummaryOfBusinessResults"],
+        "equity_ratio": ["RatioOfOwnersEquityToGrossAssetsIFRSSummaryOfBusinessResults"],
+        "eps": ["BasicEarningsLossPerShareIFRSSummaryOfBusinessResults"],
+        "per": ["PriceEarningsRatioIFRSSummaryOfBusinessResults"],
+    },
+    "Japan GAAP": {
+        "roe": ["RateOfReturnOnEquitySummaryOfBusinessResults"],
+        "equity_ratio": ["EquityToAssetRatioSummaryOfBusinessResults"],
+        "eps": ["BasicEarningsLossPerShareSummaryOfBusinessResults"],
+        "per": ["PriceEarningsRatioSummaryOfBusinessResults"],
+        "payout_ratio": ["PayoutRatioSummaryOfBusinessResults"],
+    },
+    "US GAAP": {},  # 実装時に確認。未確認のため空で開始し、確認できた時点で追加する
+}
+DISCLOSED_RATIO_CONTEXT_ID = "CurrentYearDuration"  # 比率は期間概念のため（EPSも期間利益÷株数）
+
+# グループC：計算に必要な追加のB/S項目（ローカル名候補リスト、METRIC_CONTEXT_IDと同様の考え方）
+BALANCE_SHEET_ITEMS: dict[str, dict[str, list[str]]] = {
+    "IFRS": {
+        "current_assets": ["CurrentAssetsIFRS"],
+        "current_liabilities": ["TotalCurrentLiabilitiesIFRS"],
+        "non_current_assets": ["NonCurrentAssetsIFRS"],
+        "equity": ["EquityIFRS"],
+        "inventories": ["InventoriesCAIFRS"],
+    },
+    "Japan GAAP": {
+        "current_assets": ["CurrentAssets"],
+        "current_liabilities": ["CurrentLiabilities"],
+        "non_current_assets": ["NoncurrentAssets"],
+        "equity": ["NetAssets"],
+        "inventories": ["Inventories"],
+    },
+    "US GAAP": {},  # FR-20と同じ理由（連結ベースの内訳が存在しない）で対象外
+}
+BALANCE_SHEET_CONTEXT_ID = "CurrentYearInstant"
+```
+
+`equity`（自己資本・純資産）はグループA「equity_ratio（開示値）」の代替計算にも、
+グループC「fixed_ratio」「current_ratio」にも使う共通項目のため、`BALANCE_SHEET_ITEMS`に
+一本化する。既存の`_lookup_metric`（ローカル名候補×非連結フォールバック）をそのまま流用する。
+
+### 処理フロー（`backend/routers/companies.py`に追加）
+
+```
+_build_ratio_records(facts, accounting_standard):
+    period_index = _index_facts_by_period(facts)  # FR-17で作成済みの関数を再利用
+    financial_records = _build_financial_records(facts, accounting_standard)  # revenue等の取得に再利用
+    financial_by_period = {r.period_end: r for r in financial_records}
+
+    for period_end in sorted(period_index):
+        disclosed = { ratio: _lookup_metric(period_index[period_end], candidates, DISCLOSED_RATIO_CONTEXT_ID)
+                      for ratio, candidates in DISCLOSED_RATIOS[accounting_standard].items() }
+        bs = { item: _lookup_metric(period_index[period_end], candidates, BALANCE_SHEET_CONTEXT_ID)
+               for item, candidates in BALANCE_SHEET_ITEMS[accounting_standard].items() }
+        fin = financial_by_period.get(period_end)
+
+        roe = disclosed.get("roe")  # 開示優先
+        equity_ratio = disclosed.get("equity_ratio") or _safe_div(bs["equity"], fin.total_assets)  # 開示優先、なければ計算
+        roa = _safe_div(fin.net_profit, fin.total_assets)  # 常に計算（グループB、開示値は存在しない）
+        current_ratio = _safe_div(bs["current_assets"], bs["current_liabilities"])
+        ...
+        RatioRecord(fiscal_year=..., period_end=..., roe=roe, equity_ratio=equity_ratio, ...)
+
+_safe_div(numerator, denominator):
+    分子・分母のいずれかがNone、または分母が0の場合はNoneを返す（FR-26のエラー方針）
+```
+
+`_safe_div`は新規のヘルパー関数。ゼロ除算・`None`同士の演算エラーを起こさないことだけを
+保証する（既存の`_lookup_metric`とは別の小さな関数として`routers/companies.py`に追加する）。
+
+### スキーマ（`backend/schemas.py`に追加）
+
+`RatioRecord`：`docs/design/api/components/schemas/RatioRecord.yaml`の全フィールドに対応する
+Pydanticモデル（`fiscal_year: str`・`period_end: date`・以下すべて`float | None`：
+`roe`・`equity_ratio`・`eps`・`per`・`payout_ratio`・`roa`・`total_asset_turnover`・
+`operating_margin`・`net_margin`・`current_ratio`・`fixed_ratio`・`inventory_turnover`）。
+
+### フロントエンド設計
+
+- `frontend/src/lib/formatRatio.ts`（新規）：`formatRatioForDisplay(value: number | null, unit: "%" | "回" | "円")`
+  のような、比率・回転率・EPS用のフォーマット関数を追加する（既存の`formatYenForDisplay`は
+  金額専用のため流用しない）
+- `frontend/src/components/RatioSection.tsx`（新規）：SCR-003のCF表の下に追加する新セクション。
+  指標ごとに表形式（CashFlowTableと同じレイアウトパターン）で表示する。グラフ化は今回のスコープに
+  含めない（比率の種類が多く、単位もバラバラなためグラフより表の方が適切と判断。グラフ化したい
+  場合はユーザーからの追加要望として次回検討）
+- `frontend/src/api/client.ts`：`RatioRecord`型・`getCompanyRatios(code, fromYear?, toYear?)`関数を追加
+
+### エラー・例外ケース
+- 分母がデータなし・0の場合：`_safe_div`が`None`を返し、表側は「データなし」表示（既存パターン踏襲）
+- US GAAP企業：`DISCLOSED_RATIOS`・`BALANCE_SHEET_ITEMS`とも`US GAAP`キーが空辞書のため、
+  全指標が「データなし」になる（FR-20と同じ既知の制約として許容）
+
+---
+
 ## 検証方法
 
 [cycle3_company_verification.md](../requirements/cycle3_company_verification.md)の10社分の

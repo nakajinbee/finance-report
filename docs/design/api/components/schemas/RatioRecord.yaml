@@ -1,0 +1,71 @@
+type: object
+description: FR-23〜25。1期分の財務分析指標（比率・回転率等）
+properties:
+  fiscal_year:
+    type: string
+    description: 表示用会計年度
+    example: 2026年3月期
+  period_end:
+    type: string
+    format: date
+    example: '2026-03-31'
+  roe:
+    type: number
+    nullable: true
+    description: 自己資本利益率（開示値優先、なければ計算値で補完）
+    example: 0.163
+  equity_ratio:
+    type: number
+    nullable: true
+    description: 自己資本比率（開示値優先、なければ計算値で補完）
+    example: 0.455
+  eps:
+    type: number
+    nullable: true
+    description: 1株当たり当期純利益（円、開示値）
+    example: 359.56
+  per:
+    type: number
+    nullable: true
+    description: 株価収益率（開示値）
+    example: 7.3
+  payout_ratio:
+    type: number
+    nullable: true
+    description: 配当性向（開示値）
+    example: 0.3
+  roa:
+    type: number
+    nullable: true
+    description: 総資産利益率（計算値：純利益÷総資産）
+    example: 0.05
+  total_asset_turnover:
+    type: number
+    nullable: true
+    description: 総資産回転率（計算値：売上高÷総資産、単位：回）
+    example: 1.2
+  operating_margin:
+    type: number
+    nullable: true
+    description: 売上高営業利益率（計算値：営業利益÷売上高）
+    example: 0.17
+  net_margin:
+    type: number
+    nullable: true
+    description: 売上高純利益率（計算値：純利益÷売上高）
+    example: 0.13
+  current_ratio:
+    type: number
+    nullable: true
+    description: 流動比率（計算値：流動資産÷流動負債）
+    example: 1.5
+  fixed_ratio:
+    type: number
+    nullable: true
+    description: 固定比率（計算値：固定資産÷自己資本）
+    example: 0.8
+  inventory_turnover:
+    type: number
+    nullable: true
+    description: 棚卸資産回転率（計算値：売上高÷棚卸資産、単位：回）
+    example: 8.0

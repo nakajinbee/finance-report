@@ -14,7 +14,7 @@ export const METRIC_DEFINITIONS: MetricDefinition[] = [
   { key: "operating_profit", label: "営業利益", color: "#F28E2B" },
   { key: "net_profit", label: "純利益", color: "#59A14F" },
   { key: "total_assets", label: "総資産", color: "#B07AA1" },
-  { key: "total_liabilities", label: "負債合計", color: "#E15759" },
+  { key: "total_liabilities", label: "負債", color: "#E15759" },
 ];
 
 export function getMetricValue(record: FinancialRecord, key: MetricKey): number | null {

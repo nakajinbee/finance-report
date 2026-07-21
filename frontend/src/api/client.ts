@@ -33,6 +33,23 @@ export type CashFlowRecord = {
   financing_cash_flow: number | null;
 };
 
+export type RatioRecord = {
+  fiscal_year: string;
+  period_end: string;
+  roe: number | null;
+  equity_ratio: number | null;
+  eps: number | null;
+  per: number | null;
+  payout_ratio: number | null;
+  roa: number | null;
+  total_asset_turnover: number | null;
+  operating_margin: number | null;
+  net_margin: number | null;
+  current_ratio: number | null;
+  fixed_ratio: number | null;
+  inventory_turnover: number | null;
+};
+
 export type FactRecord = {
   element_id: string;
   element_name: string | null;
@@ -143,6 +160,15 @@ export function getCompanyCashFlow(
   toYear?: number,
 ): Promise<ApiResult<CashFlowRecord[]>> {
   return requestJson(`/api/companies/${code}/cashflow${buildQuery({ from_year: fromYear, to_year: toYear })}`);
+}
+
+// API-COM-005: 企業財務分析指標取得
+export function getCompanyRatios(
+  code: string,
+  fromYear?: number,
+  toYear?: number,
+): Promise<ApiResult<RatioRecord[]>> {
+  return requestJson(`/api/companies/${code}/ratios${buildQuery({ from_year: fromYear, to_year: toYear })}`);
 }
 
 // API-COM-004: 企業の保存済みファクト一覧取得
