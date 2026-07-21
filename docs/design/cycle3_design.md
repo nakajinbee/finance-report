@@ -126,6 +126,73 @@ fiscal_year_end_date(month, day, year) -> date
 
 ---
 
+## 4. FR-21：書類探索が未来日に達した場合の異常終了を修正
+
+### 処理フロー（`backend/edinet_client.py`の`search_report`）
+
+```
+search_report(sec_code, around_date, doc_type_code, window_days=25):
+    for offset in range(0, window_days + 1):
+        for sign in ...:
+            candidate_date = around_date + offset*sign日
+            if candidate_date > date.today():
+                continue  # ここを追加：未来日はEDINETに存在しないため問い合わせない
+            documents = fetch_document_list(candidate_date)
+            ...
+```
+
+`fetch_document_list`自体は変更しない（`metadata.status`が`"200"`以外なら例外を送出する
+既存の挙動は、EDINET APIの仕様上正しい実装のため維持する）。`search_report`側で、
+そもそも未来日を候補にしないようにすることで、無駄なAPI呼び出しと、それに伴う
+探索の異常終了を防ぐ。
+
+### エラー・例外ケース
+- 探索窓（`around_date`±`window_days`）がすべて未来日になることは、決算日・提出期限の
+  計算ロジック（`report_search_center`）上起こりえない（提出期限＝決算日から一定日数後で
+  あり、探索窓はその近傍のため、探索窓の一部が未来日になることはあっても全部が未来日に
+  なることはない）。全候補が未来日でスキップされた場合は、従来通り
+  `EdinetDocumentNotFoundError`を送出する（ループが1件も`fetch_document_list`を呼ばずに
+  終わった場合も、ループ後の例外送出ロジックは変更不要）
+
+---
+
+## 5. FR-22：APIキー無効時（401）のエラーメッセージ不備を修正
+
+### データ構造・処理フロー（`backend/edinet_client.py`）
+
+```python
+class EdinetAuthError(EdinetApiError):
+    """APIキーが無効な場合（401）"""
+
+def _get(path, params) -> requests.Response:
+    ...（既存の429チェック）...
+    # 401はHTTPステータス200のまま、{"StatusCode": 401, "message": ...}という
+    # metadataでラップされない形状で返る（他のエラーと異なる）
+    try:
+        body = response.json()
+    except ValueError:
+        body = None  # 書類取得APIの成功時（ZIPバイナリ）はJSONとして読めないため
+    if isinstance(body, dict) and body.get("StatusCode") == 401:
+        raise EdinetAuthError(f"EDINET APIキーが無効です: {body.get('message')}")
+    return response
+```
+
+`_get`は`fetch_document_list`・`fetch_report_csv`の両方から呼ばれる共通処理のため、
+ここで一括判定することで両APIの401ケースをまとめて解消する。呼び出し元
+（`fetch_document_list`・`fetch_report_csv`）の既存の`metadata.status`判定ロジックは
+変更しない（401以外はこれまで通り機能する）。
+
+### エラー・例外ケース
+- 401検知のために`response.json()`を試行するが、書類取得API成功時のレスポンス
+  （ZIPバイナリ）はJSONとして解釈できず`ValueError`が送出される。この場合は
+  `body = None`として後続の401判定をスキップし、通常の処理（呼び出し元でのContent-Type
+  判定等）に進む
+- `run_download_job`（FR-09、`routers/edinet.py`）は既存の`except Exception`で
+  `EdinetAuthError`も捕捉するため、1件のエラーで全体が停止することはない
+  （既存のエラーハンドリング方針を維持）
+
+---
+
 ## 性能・セキュリティ・拡張性（self_review_rule.md 2〜4節）
 
 - **性能**：`_lookup_metric`は候補リスト×コンテキスト2種の走査だが、候補数は指標あたり

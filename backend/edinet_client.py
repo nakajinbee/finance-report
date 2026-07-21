@@ -59,6 +59,10 @@ class EdinetDocumentNotFoundError(EdinetApiError):
     """対象の書類が見つからない場合（該当書類0件、またはEDINET側が書類取得エラーを返した場合）"""
 
 
+class EdinetAuthError(EdinetApiError):
+    """APIキーが無効な場合（401）"""
+
+
 def _wait_for_rate_limit() -> None:
     global _last_request_time
     elapsed = time.monotonic() - _last_request_time
@@ -84,6 +88,18 @@ def _get(path: str, params: dict) -> requests.Response:
 
     if response.status_code == 429:
         raise EdinetRateLimitError(f"EDINET APIのレート制限に達しました: {path}")
+
+    # 401（APIキー無効）はHTTPステータス200のまま、他のエラー（400/404/500）とは異なる
+    # JSON形状（{"StatusCode": 401, "message": ...}、metadataでラップされない）で返る
+    # （EDINET_API_仕様書.pdf 3-3節、2026-07-22実機確認。FR-21調査の過程で発見）。
+    # 書類取得APIはZIPバイナリを返す場合がありJSONとして読めないため、失敗時のみ判定する
+    try:
+        body = response.json()
+    except ValueError:
+        body = None
+    if isinstance(body, dict) and body.get("StatusCode") == 401:
+        raise EdinetAuthError(f"EDINET APIキーが無効です: {body.get('message')}")
+
     return response
 
 
@@ -119,10 +135,19 @@ def search_report(sec_code: str, around_date: date, doc_type_code: str, window_d
     提出日は年によって数日〜1週間前後ずれるため、日付を1日ずつ広げながら探索する
     （memo/リクルートデータ取得メモ.md Step2の検証スクリプトと同じロジック）。
     見つからなければEdinetDocumentNotFoundErrorを送出する。
+
+    未来日（本日より後の日付）は候補から除外する。EDINETは未来日のデータを持たず
+    metadata.status="404"（リソースが存在しない）を返すため、fetch_document_listが
+    例外を送出し、まだ確認していない過去日側の候補が残っていても探索全体が中断して
+    しまうことを避ける（FR-21、2026-07-22実機確認：オムニ・プラス・システム・リミテッド
+    E36713の探索で発生）。
     """
+    today = date.today()
     for offset in range(0, window_days + 1):
         for sign in ([0] if offset == 0 else [1, -1]):
             candidate_date = around_date + timedelta(days=offset * sign)
+            if candidate_date > today:
+                continue
             documents = fetch_document_list(candidate_date)
             report = find_report(documents, sec_code, doc_type_code)
             if report is not None:
@@ -189,7 +214,9 @@ _filer_info_cache: list[FilerInfo] | None = None
 def _parse_fiscal_year_end(raw: str) -> tuple[int | None, int | None]:
     """EDINETコードリストの「決算日」列（例："3月31日"・"8月末日"）をパースする
 
-    ファンド等、決算日が"－"で埋まっている行もあるため、パースできない場合は(None, None)。
+    ファンド等、決算日が空文字列の行もあるため、パースできない場合は(None, None)。
+    全11,353件（2026-07-22時点）を実機スキャンし、空文字列以外に未対応の表記が
+    ないことを確認済み（docs/requirements/cycle3_requirements.md FR-19参照）。
     """
     month_end_match = _FISCAL_YEAR_END_MONTH_END_PATTERN.match(raw)
     if month_end_match is not None:
