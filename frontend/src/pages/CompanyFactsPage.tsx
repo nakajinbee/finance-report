@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { getCompanyFacts, type FactRecord } from "../api/client";
 import { ErrorMessage } from "../components/ErrorMessage";
+import { Panel } from "../components/Panel";
 
 type LoadState = "loading" | "loaded" | "error";
 
@@ -33,7 +34,11 @@ export function CompanyFactsPage() {
         return;
       }
       if (result.ok) {
-        setAvailablePeriods(Array.from(new Set(result.data.map((f) => f.period_end))).sort().reverse());
+        setAvailablePeriods(
+          Array.from(new Set(result.data.map((f) => f.period_end)))
+            .sort()
+            .reverse(),
+        );
       }
     });
     return () => {
@@ -70,19 +75,23 @@ export function CompanyFactsPage() {
   }, [code, elementIdFilter, periodFilter]);
 
   if (loadState === "loading") {
-    return <p className="p-8">読み込み中...</p>;
+    return (
+      <div className="flex justify-center py-16 text-gray-500">
+        読み込み中...
+      </div>
+    );
   }
 
   if (loadState === "error") {
     return (
-      <div className="p-8">
+      <div className="mx-auto max-w-2xl p-8">
         <ErrorMessage message="データの取得に失敗しました。しばらくしてから再度お試しください。" />
       </div>
     );
   }
 
   return (
-    <div className="mx-auto max-w-4xl space-y-4 p-8">
+    <div className="mx-auto max-w-6xl space-y-4 p-8">
       <button
         type="button"
         onClick={() => navigate(`/companies/${code}`)}
@@ -93,70 +102,103 @@ export function CompanyFactsPage() {
 
       <h1 className="text-xl font-semibold">保存済みデータ</h1>
 
-      <div className="flex flex-wrap items-center gap-3">
-        <input
-          type="text"
-          value={elementIdFilter}
-          onChange={(e) => setElementIdFilter(e.target.value)}
-          placeholder="要素IDで絞り込み..."
-          className="min-w-64 rounded border border-gray-300 px-3 py-2"
-        />
-        <label className="flex items-center gap-2">
-          期間：
-          <select
-            value={periodFilter}
-            onChange={(e) => setPeriodFilter(e.target.value)}
-            className="rounded border border-gray-300 px-2 py-1"
-          >
-            <option value="">すべて</option>
-            {availablePeriods.map((period) => (
-              <option key={period} value={period}>
-                {period}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
+      <Panel className="space-y-4">
+        <div className="flex flex-wrap items-center gap-3">
+          <input
+            type="text"
+            value={elementIdFilter}
+            onChange={(e) => setElementIdFilter(e.target.value)}
+            placeholder="要素IDで絞り込み..."
+            className="min-w-64 rounded border border-gray-300 px-3 py-2"
+          />
+          <label className="flex items-center gap-2">
+            期間：
+            <select
+              value={periodFilter}
+              onChange={(e) => setPeriodFilter(e.target.value)}
+              className="rounded border border-gray-300 px-2 py-1"
+            >
+              <option value="">すべて</option>
+              {availablePeriods.map((period) => (
+                <option key={period} value={period}>
+                  {period}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
 
-      {facts.length === 0 ? (
-        <p className="text-gray-500">
-          {elementIdFilter || periodFilter ? "条件に一致するデータが見つかりませんでした" : "データがありません"}
-        </p>
-      ) : (
-        <>
-          <p className="text-sm text-gray-500">{facts.length}件表示</p>
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-max border-collapse text-sm">
-              <thead>
-                <tr>
-                  <th className="border border-gray-200 px-3 py-2 text-left">要素ID</th>
-                  <th className="border border-gray-200 px-3 py-2 text-left">項目名</th>
-                  <th className="border border-gray-200 px-3 py-2 text-left">書類種別</th>
-                  <th className="border border-gray-200 px-3 py-2 text-left">期間</th>
-                  <th className="border border-gray-200 px-3 py-2 text-left">連結個別</th>
-                  <th className="border border-gray-200 px-3 py-2 text-right">値</th>
-                  <th className="border border-gray-200 px-3 py-2 text-left">単位</th>
-                </tr>
-              </thead>
-              <tbody>
-                {facts.map((fact, i) => (
-                  <tr key={`${fact.element_id}-${fact.context_id}-${fact.period_end}-${i}`}>
-                    <td className="border border-gray-200 px-3 py-2 font-mono text-xs">{fact.element_id}</td>
-                    <td className="border border-gray-200 px-3 py-2">{fact.element_name ?? "-"}</td>
-                    <td className="border border-gray-200 px-3 py-2">
-                      {DOC_TYPE_LABELS[fact.doc_type_code] ?? fact.doc_type_code}
-                    </td>
-                    <td className="border border-gray-200 px-3 py-2">{fact.period_end}</td>
-                    <td className="border border-gray-200 px-3 py-2">{fact.consolidated_or_individual ?? "-"}</td>
-                    <td className="border border-gray-200 px-3 py-2 text-right">{fact.value.toLocaleString()}</td>
-                    <td className="border border-gray-200 px-3 py-2">{fact.unit ?? "-"}</td>
+        {facts.length === 0 ? (
+          <p className="text-gray-500">
+            {elementIdFilter || periodFilter
+              ? "条件に一致するデータが見つかりませんでした"
+              : "データがありません"}
+          </p>
+        ) : (
+          <>
+            <p className="text-sm text-gray-500">{facts.length}件表示</p>
+            <div className="overflow-x-auto rounded-md border border-gray-200">
+              <table className="w-full min-w-max border-collapse text-sm">
+                <thead>
+                  <tr className="bg-gray-50">
+                    <th className="border border-gray-200 px-3 py-2 text-left">
+                      要素ID
+                    </th>
+                    <th className="border border-gray-200 px-3 py-2 text-left">
+                      項目名
+                    </th>
+                    <th className="border border-gray-200 px-3 py-2 text-left">
+                      書類種別
+                    </th>
+                    <th className="border border-gray-200 px-3 py-2 text-left">
+                      期間
+                    </th>
+                    <th className="border border-gray-200 px-3 py-2 text-left">
+                      連結個別
+                    </th>
+                    <th className="border border-gray-200 px-3 py-2 text-right">
+                      値
+                    </th>
+                    <th className="border border-gray-200 px-3 py-2 text-left">
+                      単位
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </>
-      )}
+                </thead>
+                <tbody>
+                  {facts.map((fact, i) => (
+                    <tr
+                      key={`${fact.element_id}-${fact.context_id}-${fact.period_end}-${i}`}
+                    >
+                      <td className="border border-gray-200 px-3 py-2 font-mono text-xs">
+                        {fact.element_id}
+                      </td>
+                      <td className="border border-gray-200 px-3 py-2">
+                        {fact.element_name ?? "-"}
+                      </td>
+                      <td className="border border-gray-200 px-3 py-2">
+                        {DOC_TYPE_LABELS[fact.doc_type_code] ??
+                          fact.doc_type_code}
+                      </td>
+                      <td className="border border-gray-200 px-3 py-2">
+                        {fact.period_end}
+                      </td>
+                      <td className="border border-gray-200 px-3 py-2">
+                        {fact.consolidated_or_individual ?? "-"}
+                      </td>
+                      <td className="border border-gray-200 px-3 py-2 text-right">
+                        {fact.value.toLocaleString()}
+                      </td>
+                      <td className="border border-gray-200 px-3 py-2">
+                        {fact.unit ?? "-"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
+      </Panel>
     </div>
   );
 }

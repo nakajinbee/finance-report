@@ -1,6 +1,7 @@
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import type { CashFlowRecord } from "../api/client";
 import { formatYenForDisplay, yenToOku } from "../lib/formatCurrency";
+import { toFiscalYearAxisLabel } from "../lib/formatFiscalYear";
 import { CASH_FLOW_CHART_COLORS } from "../lib/theme";
 
 type CashFlowChartProps = {
@@ -61,10 +62,10 @@ export function CashFlowChart({ records }: CashFlowChartProps) {
 
   return (
     <ResponsiveContainer width="100%" height={320}>
-      <BarChart data={chartData}>
+      <BarChart data={chartData} margin={{ left: 8 }}>
         <CartesianGrid strokeDasharray="3 3" />
-        <XAxis dataKey="fiscal_year" />
-        <YAxis unit="億円" />
+        <XAxis dataKey="fiscal_year" tickFormatter={toFiscalYearAxisLabel} />
+        <YAxis unit="億円" width={80} />
         <Tooltip content={<ChartTooltip records={records} />} />
         <Legend />
         {CF_DEFINITIONS.map((cf) => (

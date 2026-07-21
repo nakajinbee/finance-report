@@ -127,11 +127,155 @@ export function Layout() {
 
 ---
 
+## 4. FR-33：仮デザインの「作り込み感」向上
+
+### 4.1 配色（「クールブルー」パレット）
+
+`lib/theme.ts`・`index.css`を以下のように更新する：
+
+```typescript
+export const THEME = {
+  ...
+  accent: "#07575B",      // ocean
+  accentDark: "#003B46",  // deep aqua
+  accentLight: "#66A5AD", // wave
+  tint: "#C4DFE6",        // seafoam
+} as const;
+```
+
+```css
+@theme {
+  --color-brand: #07575B;       /* ocean */
+  --color-brand-dark: #003B46;  /* deep aqua */
+  --color-brand-light: #66A5AD; /* wave */
+  --color-tint: #C4DFE6;        /* seafoam */
+}
+```
+
+`Header`は`bg-brand-dark`（deep aqua、より濃い色でヘッダーらしい重みを出す）、
+`Footer`は`bg-tint`（seafoam）、ボタン・トグルの選択状態は`bg-brand`（ocean）に更新する。
+`CHART_COLORS`・`COMPONENT_CHART_COLORS`・`CASH_FLOW_CHART_COLORS`は変更しない
+（指標の見分けやすさを優先し、Tableau10系の配色のまま維持）。
+
+### 4.2 `Panel`コンポーネント（新規）
+
+```tsx
+// frontend/src/components/Panel.tsx
+type PanelProps = { children: ReactNode; className?: string };
+export function Panel({ children, className }: PanelProps) {
+  return (
+    <div className={`rounded-lg border border-gray-200 bg-white p-6 shadow-sm ${className ?? ""}`}>
+      {children}
+    </div>
+  );
+}
+```
+
+`FinancialMetricSection`・キャッシュフロー計算書セクション・`RatioCategorySection`・
+`CompanyListPage`の企業カード・`DownloadPage`の検索結果一覧を`Panel`で囲む。
+テーブル（`CashFlowTable`・`FinancialMetricTable`・`RatioCategoryTable`・
+`CompanyFactsPage`の一覧）のヘッダー行に`bg-gray-50`を追加する。
+
+### 4.3 `Button`コンポーネント（新規）
+
+```tsx
+// frontend/src/components/Button.tsx
+type ButtonProps = {
+  variant?: "primary" | "secondary";
+  children: ReactNode;
+} & ButtonHTMLAttributes<HTMLButtonElement>;
+
+export function Button({ variant = "primary", className, children, ...props }: ButtonProps) {
+  const base = "rounded px-4 py-2 text-sm font-medium disabled:opacity-50";
+  const style =
+    variant === "primary"
+      ? "bg-brand text-white hover:bg-brand-dark disabled:hover:bg-brand"
+      : "border border-gray-300 text-gray-700 hover:bg-gray-50";
+  return (
+    <button className={`${base} ${style} ${className ?? ""}`} {...props}>
+      {children}
+    </button>
+  );
+}
+```
+
+既存の個別クラス指定ボタン（`DownloadPage`のダウンロード実行、`CompanyDetailPage`の
+「企業一覧へ」「生データを確認」、`CompanyListPage`の各種ボタン等）を`Button`に置き換える。
+リンク的な「戻る」ボタン（`← 企業一覧へ`等のテキストリンク）は`Button`化せず、
+現状の`text-sm text-gray-500`のまま維持する（ボタンというよりナビゲーションのため）。
+
+### 4.4 レイアウト幅
+
+- `CompanyDetailPage.tsx`：`max-w-3xl` → `max-w-6xl`
+- `CompanyFactsPage.tsx`：`max-w-4xl` → `max-w-6xl`
+- `DownloadPage.tsx`・`CompanyListPage.tsx`：`max-w-xl` → `max-w-2xl`
+- `Header`・`Footer`の`max-w-5xl`は維持
+
+### 4.4b レスポンシブ・2列グリッド
+
+Tailwindの`xl:`（1280px）ブレークポイントを使い、`grid grid-cols-1 xl:grid-cols-2 gap-6`
+で対になるセクションを並べる。新規コンポーネントは作らず、`CompanyDetailPage.tsx`・
+`CompanyListPage.tsx`側でグリッドラッパーを直接使う（対象がこの2画面に限定されるため、
+共通コンポーネント化は今回は行わない）。
+
+- **企業詳細画面**：
+  - B/S（`FinancialMetricSection`）とP/L（`FinancialMetricSection`）を1つの
+    `grid grid-cols-1 xl:grid-cols-2 gap-6`で並べる
+  - キャッシュフロー計算書は対がないため、グリッドの外（前後どちらか）に単独で
+    フル幅のまま配置する
+  - 財務分析指標の4カテゴリ（収益性・効率性・安全性・投資指標）も同様に
+    `grid grid-cols-1 xl:grid-cols-2 gap-6`で2列×2行に並べる
+- **企業一覧画面**：企業カードの`<ul>`を`grid grid-cols-1 xl:grid-cols-2 gap-3`に変更する
+  （現状は`space-y-2`の縦積みリスト）
+
+`Panel`コンポーネント自体は幅を持たない（親のグリッド/フレックスに従う）ため、
+2列化によるPanel自体の変更は不要。
+
+### 4.5 空状態・ローディング表示
+
+`読み込み中...`等の素のテキスト表示を、`<div className="flex justify-center py-16
+text-gray-500">`で中央寄せする共通パターンに統一する（新規コンポーネント化はせず、
+各ページの該当箇所にクラスを追加するのみ。パターンが単純なため、コンポーネント化は
+オーバーエンジニアリングと判断）。
+
+### 4.6 フォント
+
+`index.css`にGoogle Fontsから`Inter`（欧文）・`Noto Sans JP`（和文）を読み込み、
+`body`に適用する：
+
+```css
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;700&display=swap');
+
+body {
+  font-family: "Inter", "Noto Sans JP", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+```
+
+既存のTailwindユーティリティ（`font-medium`・`font-semibold`等）はそのまま使えるため、
+コンポーネント側の変更は不要。
+
+### 4.7 グラフの軸ラベル簡略化
+
+`frontend/src/lib/formatFiscalYear.ts`（新規）に`toFiscalYearAxisLabel(fiscalYear: string):
+string`を追加し、`fiscal_year`文字列（例："2021年3月期"）の先頭の年部分だけを正規表現
+（`/^(\d+)年/`）で取り出す。`FinancialChart`・`CashFlowChart`・`RatioCategoryChart`の
+`<XAxis dataKey="fiscal_year" />`に`tickFormatter={toFiscalYearAxisLabel}`を追加する
+（`dataKey`自体は変更しない。Rechartsの`tickFormatter`は軸の表示ラベルのみを変換し、
+ツールチップに渡される`label`引数には影響しないため、ツールチップ・表は引き続き
+フル表記のままになる）。
+
+---
+
 ## 検証方法
 
 1. `tsc -b --noEmit`・`oxlint`が通ることを確認
 2. 開発サーバー（vite HMR）で全画面（SCR-001〜004）を表示し、ヘッダー・フッターが
    共通して表示されること、既存の機能（検索・ダウンロード・グラフ表示・トグル）が
    壊れていないことを確認
-3. グラフの配色が変更前と同じであること（値のリファクタリングのみで見た目は変えない）を
-   目視確認
+3. グラフの配色（`CHART_COLORS`等）が変更前と同じであること（値のリファクタリングのみで
+   見た目は変えない）を目視確認
+4. FR-33：新しい配色（クールブルー）がヘッダー・フッター・ボタン・トグルに反映されて
+   いること、`Panel`・`Button`が各画面で正しく表示されること、幅拡大後もレイアウトが
+   崩れていないことを目視確認
+5. ブラウザウィンドウを1280px以上に広げた際にB/S・P/L、財務分析指標4カテゴリ、
+   企業一覧カードが2列表示に切り替わり、それより狭い場合は1列に積まれることを確認

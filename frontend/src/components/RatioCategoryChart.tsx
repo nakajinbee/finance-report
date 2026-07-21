@@ -1,5 +1,6 @@
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import type { FinancialRecord, RatioRecord } from "../api/client";
+import { toFiscalYearAxisLabel } from "../lib/formatFiscalYear";
 import type { CategoryChartEntry } from "../lib/ratioCategories";
 
 type RatioCategoryChartProps = {
@@ -73,7 +74,7 @@ export function RatioCategoryChart({ financialRecords, ratioRecords, entries, ac
     <ResponsiveContainer width="100%" height={280}>
       <BarChart data={chartData}>
         <CartesianGrid strokeDasharray="3 3" />
-        <XAxis dataKey="fiscal_year" />
+        <XAxis dataKey="fiscal_year" tickFormatter={toFiscalYearAxisLabel} />
         {hasDualAxis ? (
           <>
             <YAxis yAxisId="left" />

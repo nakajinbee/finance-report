@@ -10,9 +10,11 @@ export const THEME = {
   border: "#e5e7eb",
   textPrimary: "#111827",
   textSecondary: "#6b7280",
-  // 水色（Tailwind sky系）をメインカラーにする（ユーザー指定、2026-07-22）
-  accent: "#0ea5e9",
-  accentDark: "#0284c7",
+  // Canva配色パレット「05. クールブルー」を採用（ユーザー指定、2026-07-22）
+  accent: "#07575B", // ocean
+  accentDark: "#003B46", // deep aqua
+  accentLight: "#66A5AD", // wave
+  tint: "#C4DFE6", // seafoam
 } as const;
 
 // グラフの系列色（Tableau10ベース）。複数のグラフコンポーネントに散在していた色コードを集約した
@@ -27,7 +29,13 @@ export const CHART_COLORS = {
 } as const;
 
 // 指標の「内訳（生の金額）」用の色（指標本体の色とは別系統にして見分けやすくする）
-export const COMPONENT_CHART_COLORS = ["#BAB0AC", "#D37295", "#8CD17D", "#FABFD2", "#9D7660"] as const;
+export const COMPONENT_CHART_COLORS = [
+  "#BAB0AC",
+  "#D37295",
+  "#8CD17D",
+  "#FABFD2",
+  "#9D7660",
+] as const;
 
 // キャッシュフロー計算書グラフ専用の色（既存の見た目を変えないよう、CHART_COLORSとは別に集約）
 export const CASH_FLOW_CHART_COLORS = {

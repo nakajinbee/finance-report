@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getCompanies, type Company } from "../api/client";
+import { Button } from "../components/Button";
 import { ErrorMessage } from "../components/ErrorMessage";
 import { normalizeForSearch } from "../lib/kana";
 
@@ -40,12 +41,16 @@ export function CompanyListPage() {
     .sort((a, b) => a.code.localeCompare(b.code));
 
   if (loadState === "loading") {
-    return <p className="p-8">読み込み中...</p>;
+    return (
+      <div className="flex justify-center py-16 text-gray-500">
+        読み込み中...
+      </div>
+    );
   }
 
   if (loadState === "error") {
     return (
-      <div className="p-8">
+      <div className="mx-auto max-w-2xl p-8">
         <ErrorMessage message="データの取得に失敗しました。しばらくしてから再度お試しください。" />
       </div>
     );
@@ -53,21 +58,17 @@ export function CompanyListPage() {
 
   if (companies.length === 0) {
     return (
-      <div className="mx-auto max-w-xl space-y-4 p-8">
+      <div className="mx-auto max-w-2xl space-y-4 p-8">
         <p>データがありません。まずデータを取得してください。</p>
-        <button
-          type="button"
-          onClick={() => navigate("/download")}
-          className="rounded border border-gray-300 px-4 py-2"
-        >
+        <Button variant="secondary" onClick={() => navigate("/download")}>
           データを取得する
-        </button>
+        </Button>
       </div>
     );
   }
 
   return (
-    <div className="mx-auto max-w-xl space-y-4 p-8">
+    <div className="mx-auto max-w-2xl space-y-4 p-8">
       <h1 className="text-xl font-semibold">企業一覧</h1>
 
       <input
@@ -85,17 +86,18 @@ export function CompanyListPage() {
       {filteredCompanies.length === 0 ? (
         <p>&quot;{keyword}&quot; に一致する企業が見つかりませんでした</p>
       ) : (
-        <ul className="space-y-2">
+        <ul className="grid grid-cols-1 gap-3 xl:grid-cols-2">
           {filteredCompanies.map((company) => (
             <li key={company.code}>
               <button
                 type="button"
                 onClick={() => navigate(`/companies/${company.code}`)}
-                className="w-full rounded border border-gray-200 px-4 py-3 text-left hover:bg-gray-50"
+                className="w-full rounded-lg border border-gray-200 bg-white p-4 text-left shadow-sm hover:bg-gray-50"
               >
                 <p className="font-medium">{company.name}</p>
                 <p className="text-sm text-gray-500">
-                  {company.code} ｜ {company.sector ?? "業種不明"} ｜ {company.accounting_standard}
+                  {company.code} ｜ {company.sector ?? "業種不明"} ｜{" "}
+                  {company.accounting_standard}
                 </p>
               </button>
             </li>
@@ -103,13 +105,9 @@ export function CompanyListPage() {
         </ul>
       )}
 
-      <button
-        type="button"
-        onClick={() => navigate("/download")}
-        className="rounded border border-gray-300 px-4 py-2"
-      >
+      <Button variant="secondary" onClick={() => navigate("/download")}>
         データを追加取得する
-      </button>
+      </Button>
     </div>
   );
 }

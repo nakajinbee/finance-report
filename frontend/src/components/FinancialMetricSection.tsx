@@ -3,6 +3,7 @@ import type { FinancialRecord } from "../api/client";
 import { FinancialChart } from "./FinancialChart";
 import { FinancialMetricTable } from "./FinancialMetricTable";
 import { MetricSelector } from "./MetricSelector";
+import { Panel } from "./Panel";
 import type { MetricDefinition, MetricKey } from "../lib/metrics";
 
 type FinancialMetricSectionProps = {
@@ -11,7 +12,11 @@ type FinancialMetricSectionProps = {
   definitions: MetricDefinition[];
 };
 
-export function FinancialMetricSection({ title, records, definitions }: FinancialMetricSectionProps) {
+export function FinancialMetricSection({
+  title,
+  records,
+  definitions,
+}: FinancialMetricSectionProps) {
   const [activeMetrics, setActiveMetrics] = useState<Set<MetricKey>>(
     () => new Set(definitions.map((d) => d.key)),
   );
@@ -28,20 +33,30 @@ export function FinancialMetricSection({ title, records, definitions }: Financia
     });
   }
 
-  const hasAnyValue = records.some((record) => definitions.some((metric) => record[metric.key] !== null));
+  const hasAnyValue = records.some((record) =>
+    definitions.some((metric) => record[metric.key] !== null),
+  );
 
   return (
-    <div className="space-y-3 border-t border-gray-200 pt-6">
+    <Panel className="space-y-3">
       <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
-      <MetricSelector definitions={definitions} activeMetrics={activeMetrics} onToggle={toggleMetric} />
+      <MetricSelector
+        definitions={definitions}
+        activeMetrics={activeMetrics}
+        onToggle={toggleMetric}
+      />
       {activeMetrics.size === 0 ? (
         <p className="text-gray-500">指標を1つ以上選択してください</p>
       ) : !hasAnyValue ? (
         <p className="text-gray-500">表示できるデータがありません</p>
       ) : (
-        <FinancialChart records={records} definitions={definitions} activeMetrics={activeMetrics} />
+        <FinancialChart
+          records={records}
+          definitions={definitions}
+          activeMetrics={activeMetrics}
+        />
       )}
       <FinancialMetricTable records={records} definitions={definitions} />
-    </div>
+    </Panel>
   );
 }
