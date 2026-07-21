@@ -50,6 +50,11 @@ export type RatioRecord = {
   current_ratio: number | null;
   fixed_ratio: number | null;
   inventory_turnover: number | null;
+  current_assets: number | null;
+  current_liabilities: number | null;
+  non_current_assets: number | null;
+  non_current_liabilities: number | null;
+  inventories: number | null;
 };
 
 export type FactRecord = {

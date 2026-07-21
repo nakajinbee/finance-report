@@ -1,8 +1,33 @@
-import type { RatioRecord } from "../api/client";
+import type { FinancialRecord, RatioRecord } from "../api/client";
 
 export type RatioKey = Exclude<keyof RatioRecord, "fiscal_year" | "period_end">;
 
 export type RatioFormat = "percent" | "turnover" | "number";
+
+type FinancialComponentKey = "revenue" | "operating_profit" | "net_profit" | "total_assets" | "equity";
+type RatioComponentKey =
+  | "current_assets"
+  | "current_liabilities"
+  | "non_current_assets"
+  | "non_current_liabilities"
+  | "inventories";
+
+// 指標計算の元になった生の金額（ユーザー要望、2026-07-22）。B/S・P/Lの主要項目は
+// FinancialRecordから、安全性・効率性特有の内訳項目はRatioRecordから参照する
+export type ComponentDefinition =
+  | { key: FinancialComponentKey; label: string; source: "financial" }
+  | { key: RatioComponentKey; label: string; source: "ratio" };
+
+export function getComponentValue(
+  financial: FinancialRecord | undefined,
+  ratio: RatioRecord | undefined,
+  component: ComponentDefinition,
+): number | null {
+  if (component.source === "financial") {
+    return financial ? financial[component.key] : null;
+  }
+  return ratio ? ratio[component.key] : null;
+}
 
 export type RatioMetricDefinition = {
   key: RatioKey;
@@ -13,25 +38,118 @@ export type RatioMetricDefinition = {
   unit: string;
   /** 投資指標カテゴリのみ、単位が異なる系列を2軸に振り分けるために使う */
   axis?: "left" | "right";
+  /** この指標の計算に使った生の金額（表にのみ表示、グラフには出さない） */
+  components?: ComponentDefinition[];
 };
 
 // FR-28：既存12指標を4カテゴリに分類する
 export const PROFITABILITY_RATIOS: RatioMetricDefinition[] = [
-  { key: "roe", label: "ROE（自己資本利益率）", color: "#4E79A7", format: "percent", unit: "%" },
-  { key: "roa", label: "ROA（総資産利益率）", color: "#F28E2B", format: "percent", unit: "%" },
-  { key: "operating_margin", label: "売上高営業利益率", color: "#59A14F", format: "percent", unit: "%" },
-  { key: "net_margin", label: "売上高純利益率", color: "#B07AA1", format: "percent", unit: "%" },
+  {
+    key: "roe",
+    label: "ROE（自己資本利益率）",
+    color: "#4E79A7",
+    format: "percent",
+    unit: "%",
+    components: [
+      { key: "net_profit", label: "純利益", source: "financial" },
+      { key: "equity", label: "自己資本（純資産）", source: "financial" },
+    ],
+  },
+  {
+    key: "roa",
+    label: "ROA（総資産利益率）",
+    color: "#F28E2B",
+    format: "percent",
+    unit: "%",
+    components: [
+      { key: "net_profit", label: "純利益", source: "financial" },
+      { key: "total_assets", label: "総資産", source: "financial" },
+    ],
+  },
+  {
+    key: "operating_margin",
+    label: "売上高営業利益率",
+    color: "#59A14F",
+    format: "percent",
+    unit: "%",
+    components: [
+      { key: "operating_profit", label: "営業利益", source: "financial" },
+      { key: "revenue", label: "売上高", source: "financial" },
+    ],
+  },
+  {
+    key: "net_margin",
+    label: "売上高純利益率",
+    color: "#B07AA1",
+    format: "percent",
+    unit: "%",
+    components: [
+      { key: "net_profit", label: "純利益", source: "financial" },
+      { key: "revenue", label: "売上高", source: "financial" },
+    ],
+  },
 ];
 
 export const EFFICIENCY_RATIOS: RatioMetricDefinition[] = [
-  { key: "total_asset_turnover", label: "総資産回転率", color: "#4E79A7", format: "turnover", unit: "回" },
-  { key: "inventory_turnover", label: "棚卸資産回転率", color: "#F28E2B", format: "turnover", unit: "回" },
+  {
+    key: "total_asset_turnover",
+    label: "総資産回転率",
+    color: "#4E79A7",
+    format: "turnover",
+    unit: "回",
+    components: [
+      { key: "revenue", label: "売上高", source: "financial" },
+      { key: "total_assets", label: "総資産", source: "financial" },
+    ],
+  },
+  {
+    key: "inventory_turnover",
+    label: "棚卸資産回転率",
+    color: "#F28E2B",
+    format: "turnover",
+    unit: "回",
+    components: [
+      { key: "revenue", label: "売上高", source: "financial" },
+      { key: "inventories", label: "棚卸資産", source: "ratio" },
+    ],
+  },
 ];
 
 export const SAFETY_RATIOS: RatioMetricDefinition[] = [
-  { key: "current_ratio", label: "流動比率", color: "#4E79A7", format: "percent", unit: "%" },
-  { key: "fixed_ratio", label: "固定比率", color: "#F28E2B", format: "percent", unit: "%" },
-  { key: "equity_ratio", label: "自己資本比率", color: "#59A14F", format: "percent", unit: "%" },
+  {
+    key: "current_ratio",
+    label: "流動比率",
+    color: "#4E79A7",
+    format: "percent",
+    unit: "%",
+    components: [
+      { key: "current_assets", label: "流動資産", source: "ratio" },
+      { key: "current_liabilities", label: "流動負債", source: "ratio" },
+    ],
+  },
+  {
+    key: "fixed_ratio",
+    label: "固定比率",
+    color: "#F28E2B",
+    format: "percent",
+    unit: "%",
+    components: [
+      { key: "non_current_assets", label: "固定資産", source: "ratio" },
+      { key: "non_current_liabilities", label: "固定負債", source: "ratio" },
+      { key: "equity", label: "自己資本（純資産）", source: "financial" },
+    ],
+  },
+  {
+    key: "equity_ratio",
+    label: "自己資本比率",
+    color: "#59A14F",
+    format: "percent",
+    unit: "%",
+    components: [
+      { key: "equity", label: "自己資本（純資産）", source: "financial" },
+      { key: "total_assets", label: "総資産", source: "financial" },
+    ],
+  },
 ];
 
 // 単位が円・倍・%と異なるため、チャートは2軸（EPS=左軸、PER・配当性向=右軸）にする

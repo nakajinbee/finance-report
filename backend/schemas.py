@@ -121,6 +121,14 @@ class RatioRecord(BaseModel):
     current_ratio: float | None = None
     fixed_ratio: float | None = None
     inventory_turnover: float | None = None
+    # 指標計算の元になった生の金額（ユーザー要望、2026-07-22）。B/S・P/Lの主要項目
+    # （総資産・自己資本・売上高等）はFinancialRecordに既に含まれるため、ここでは
+    # 安全性・効率性の指標計算にのみ使う内訳項目を追加する
+    current_assets: int | None = None
+    current_liabilities: int | None = None
+    non_current_assets: int | None = None
+    non_current_liabilities: int | None = None
+    inventories: int | None = None
 
 
 class FactRecord(BaseModel):

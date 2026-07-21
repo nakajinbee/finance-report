@@ -174,6 +174,12 @@ def _build_ratio_records(facts: list[Fact], accounting_standard: str) -> list[sc
             "current_ratio": _safe_div(bs.get("current_assets"), bs.get("current_liabilities")),
             "fixed_ratio": _safe_div(bs.get("non_current_assets"), fin.equity),
             "inventory_turnover": _safe_div(fin.revenue, bs.get("inventories")),
+            # 指標計算の元になった生の金額（ユーザー要望、2026-07-22）
+            "current_assets": bs.get("current_assets"),
+            "current_liabilities": bs.get("current_liabilities"),
+            "non_current_assets": bs.get("non_current_assets"),
+            "non_current_liabilities": bs.get("non_current_liabilities"),
+            "inventories": bs.get("inventories"),
         }
         if not any(value is not None for value in values.values()):
             continue

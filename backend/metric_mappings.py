@@ -135,12 +135,16 @@ BALANCE_SHEET_ITEMS: dict[str, dict[str, list[str]]] = {
         "current_assets": ["CurrentAssetsIFRS"],
         "current_liabilities": ["TotalCurrentLiabilitiesIFRS"],
         "non_current_assets": ["NonCurrentAssetsIFRS"],
+        # EDINET側のタグ名自体に綴りミスがある（"Liabilities"の"i"が抜けている）。
+        # リクルートHD・武田薬品工業・トヨタ自動車の3社で同一の綴りを実機確認済み
+        "non_current_liabilities": ["NonCurrentLabilitiesIFRS"],
         "inventories": ["InventoriesCAIFRS"],
     },
     "Japan GAAP": {
         "current_assets": ["CurrentAssets"],
         "current_liabilities": ["CurrentLiabilities"],
         "non_current_assets": ["NoncurrentAssets"],
+        "non_current_liabilities": ["NoncurrentLiabilities"],
         "inventories": ["Inventories"],
     },
     # US GAAP：FR-20と同じ理由（連結ベースの内訳が経営指標等・主財務諸表とも存在しない、
