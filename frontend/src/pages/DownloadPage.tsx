@@ -222,7 +222,7 @@ export function DownloadPage() {
         type="button"
         onClick={handleDownloadClick}
         disabled={!canDownload}
-        className="rounded bg-blue-600 px-4 py-2 text-white disabled:bg-gray-300"
+        className="rounded bg-brand px-4 py-2 text-white hover:bg-brand-dark disabled:bg-gray-300"
       >
         データを取得する
       </button>

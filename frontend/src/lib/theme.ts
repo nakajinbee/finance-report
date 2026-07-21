@@ -10,7 +10,9 @@ export const THEME = {
   border: "#e5e7eb",
   textPrimary: "#111827",
   textSecondary: "#6b7280",
-  accent: "#2563eb",
+  // 水色（Tailwind sky系）をメインカラーにする（ユーザー指定、2026-07-22）
+  accent: "#0ea5e9",
+  accentDark: "#0284c7",
 } as const;
 
 // グラフの系列色（Tableau10ベース）。複数のグラフコンポーネントに散在していた色コードを集約した
