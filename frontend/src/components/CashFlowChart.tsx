@@ -1,6 +1,7 @@
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import type { CashFlowRecord } from "../api/client";
 import { formatYenForDisplay, yenToOku } from "../lib/formatCurrency";
+import { CASH_FLOW_CHART_COLORS } from "../lib/theme";
 
 type CashFlowChartProps = {
   records: CashFlowRecord[];
@@ -9,9 +10,9 @@ type CashFlowChartProps = {
 type CashFlowKey = "operating_cash_flow" | "investing_cash_flow" | "financing_cash_flow";
 
 const CF_DEFINITIONS: { key: CashFlowKey; label: string; color: string }[] = [
-  { key: "operating_cash_flow", label: "営業CF", color: "#1F3864" },
-  { key: "investing_cash_flow", label: "投資CF", color: "#6699CC" },
-  { key: "financing_cash_flow", label: "財務CF", color: "#F28E2B" },
+  { key: "operating_cash_flow", label: "営業CF", color: CASH_FLOW_CHART_COLORS.operating },
+  { key: "investing_cash_flow", label: "投資CF", color: CASH_FLOW_CHART_COLORS.investing },
+  { key: "financing_cash_flow", label: "財務CF", color: CASH_FLOW_CHART_COLORS.financing },
 ];
 
 type ChartDatum = { fiscal_year: string } & Partial<Record<CashFlowKey, number | null>>;

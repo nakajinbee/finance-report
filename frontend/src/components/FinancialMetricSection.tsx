@@ -31,8 +31,8 @@ export function FinancialMetricSection({ title, records, definitions }: Financia
   const hasAnyValue = records.some((record) => definitions.some((metric) => record[metric.key] !== null));
 
   return (
-    <div className="space-y-2">
-      <h2 className="font-medium">{title}</h2>
+    <div className="space-y-3 border-t border-gray-200 pt-6">
+      <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
       <MetricSelector definitions={definitions} activeMetrics={activeMetrics} onToggle={toggleMetric} />
       {activeMetrics.size === 0 ? (
         <p className="text-gray-500">指標を1つ以上選択してください</p>

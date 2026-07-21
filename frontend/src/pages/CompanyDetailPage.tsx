@@ -188,14 +188,14 @@ export function CompanyDetailPage() {
             definitions={PL_METRIC_DEFINITIONS}
           />
 
-          <div className="space-y-2">
-            <h2 className="font-medium">キャッシュフロー計算書</h2>
+          <div className="space-y-3 border-t border-gray-200 pt-6">
+            <h2 className="text-lg font-semibold text-gray-900">キャッシュフロー計算書</h2>
             <CashFlowChart records={cashFlow} />
             <CashFlowTable financialRecords={financials.data} cashFlowRecords={cashFlow} />
           </div>
 
-          <div className="space-y-4">
-            <h2 className="font-medium">財務分析指標</h2>
+          <div className="space-y-4 border-t border-gray-200 pt-6">
+            <h2 className="text-lg font-semibold text-gray-900">財務分析指標</h2>
             <RatioCategorySection
               title="収益性"
               financialRecords={financials.data}

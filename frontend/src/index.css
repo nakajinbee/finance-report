@@ -1,1 +1,7 @@
 @import "tailwindcss";
+
+/* サイクル4の仮の配色（FR-32）。本格的な配色決定はサイクル5・6で行う */
+@theme {
+  --color-brand: #2563eb;
+  --color-brand-dark: #1d4ed8;
+}

@@ -1,6 +1,7 @@
 import type { FinancialRecord, RatioRecord } from "../api/client";
 import { formatYenForDisplay, yenToOku } from "./formatCurrency";
 import { formatByRatioFormat } from "./formatRatio";
+import { CHART_COLORS, COMPONENT_CHART_COLORS } from "./theme";
 
 export type RatioKey = Exclude<keyof RatioRecord, "fiscal_year" | "period_end">;
 
@@ -49,7 +50,7 @@ export const PROFITABILITY_RATIOS: RatioMetricDefinition[] = [
   {
     key: "roe",
     label: "ROE（自己資本利益率）",
-    color: "#4E79A7",
+    color: CHART_COLORS.series1,
     format: "percent",
     unit: "%",
     components: [
@@ -60,7 +61,7 @@ export const PROFITABILITY_RATIOS: RatioMetricDefinition[] = [
   {
     key: "roa",
     label: "ROA（総資産利益率）",
-    color: "#F28E2B",
+    color: CHART_COLORS.series2,
     format: "percent",
     unit: "%",
     components: [
@@ -71,7 +72,7 @@ export const PROFITABILITY_RATIOS: RatioMetricDefinition[] = [
   {
     key: "operating_margin",
     label: "売上高営業利益率",
-    color: "#59A14F",
+    color: CHART_COLORS.series3,
     format: "percent",
     unit: "%",
     components: [
@@ -82,7 +83,7 @@ export const PROFITABILITY_RATIOS: RatioMetricDefinition[] = [
   {
     key: "net_margin",
     label: "売上高純利益率",
-    color: "#B07AA1",
+    color: CHART_COLORS.series4,
     format: "percent",
     unit: "%",
     components: [
@@ -96,7 +97,7 @@ export const EFFICIENCY_RATIOS: RatioMetricDefinition[] = [
   {
     key: "total_asset_turnover",
     label: "総資産回転率",
-    color: "#4E79A7",
+    color: CHART_COLORS.series1,
     format: "turnover",
     unit: "回",
     components: [
@@ -107,7 +108,7 @@ export const EFFICIENCY_RATIOS: RatioMetricDefinition[] = [
   {
     key: "inventory_turnover",
     label: "棚卸資産回転率",
-    color: "#F28E2B",
+    color: CHART_COLORS.series2,
     format: "turnover",
     unit: "回",
     components: [
@@ -121,7 +122,7 @@ export const SAFETY_RATIOS: RatioMetricDefinition[] = [
   {
     key: "current_ratio",
     label: "流動比率",
-    color: "#4E79A7",
+    color: CHART_COLORS.series1,
     format: "percent",
     unit: "%",
     components: [
@@ -132,7 +133,7 @@ export const SAFETY_RATIOS: RatioMetricDefinition[] = [
   {
     key: "fixed_ratio",
     label: "固定比率",
-    color: "#F28E2B",
+    color: CHART_COLORS.series2,
     format: "percent",
     unit: "%",
     components: [
@@ -144,7 +145,7 @@ export const SAFETY_RATIOS: RatioMetricDefinition[] = [
   {
     key: "equity_ratio",
     label: "自己資本比率",
-    color: "#59A14F",
+    color: CHART_COLORS.series3,
     format: "percent",
     unit: "%",
     components: [
@@ -156,9 +157,9 @@ export const SAFETY_RATIOS: RatioMetricDefinition[] = [
 
 // 単位が円・倍・%と異なるため、チャートは2軸（EPS=左軸、PER・配当性向=右軸）にする
 export const INVESTMENT_RATIOS: RatioMetricDefinition[] = [
-  { key: "eps", label: "EPS（1株当たり当期純利益）", color: "#4E79A7", format: "number", unit: "円", axis: "left" },
-  { key: "per", label: "PER（株価収益率）", color: "#F28E2B", format: "number", unit: "倍", axis: "right" },
-  { key: "payout_ratio", label: "配当性向", color: "#59A14F", format: "percent", unit: "%", axis: "right" },
+  { key: "eps", label: "EPS（1株当たり当期純利益）", color: CHART_COLORS.series1, format: "number", unit: "円", axis: "left" },
+  { key: "per", label: "PER（株価収益率）", color: CHART_COLORS.series2, format: "number", unit: "倍", axis: "right" },
+  { key: "payout_ratio", label: "配当性向", color: CHART_COLORS.series3, format: "percent", unit: "%", axis: "right" },
 ];
 
 export function getRatioValue(record: RatioRecord, key: RatioKey): number | null {
@@ -185,9 +186,6 @@ export type CategoryChartEntry = {
   getDisplayValue: (financial: FinancialRecord | undefined, ratio: RatioRecord | undefined) => string;
 };
 
-// 内訳（生の金額）系列の色。指標本体の色（Tableau10系）とは別系統にして見分けやすくする
-const COMPONENT_COLORS = ["#BAB0AC", "#D37295", "#8CD17D", "#FABFD2", "#9D7660"];
-
 export function buildCategoryChartEntries(definitions: RatioMetricDefinition[]): CategoryChartEntry[] {
   const ratioEntries: CategoryChartEntry[] = definitions.map((metric) => ({
     key: metric.key,
@@ -210,7 +208,7 @@ export function buildCategoryChartEntries(definitions: RatioMetricDefinition[]):
       componentEntries.push({
         key: component.key,
         label: component.label,
-        color: COMPONENT_COLORS[componentEntries.length % COMPONENT_COLORS.length],
+        color: COMPONENT_CHART_COLORS[componentEntries.length % COMPONENT_CHART_COLORS.length],
         axis: "right",
         isComponent: true,
         getChartValue: (financial, ratio) => {

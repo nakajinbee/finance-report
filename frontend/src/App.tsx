@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Navigate, Route, BrowserRouter as Router, Routes } from "react-router-dom";
 import { getCompanies } from "./api/client";
+import { Layout } from "./components/layout/Layout";
 import { CompanyDetailPage } from "./pages/CompanyDetailPage";
 import { CompanyFactsPage } from "./pages/CompanyFactsPage";
 import { CompanyListPage } from "./pages/CompanyListPage";
@@ -26,11 +27,13 @@ function App() {
   return (
     <Router>
       <Routes>
-        <Route path="/" element={<AppEntry />} />
-        <Route path="/download" element={<DownloadPage />} />
-        <Route path="/companies" element={<CompanyListPage />} />
-        <Route path="/companies/:code" element={<CompanyDetailPage />} />
-        <Route path="/companies/:code/facts" element={<CompanyFactsPage />} />
+        <Route element={<Layout />}>
+          <Route path="/" element={<AppEntry />} />
+          <Route path="/download" element={<DownloadPage />} />
+          <Route path="/companies" element={<CompanyListPage />} />
+          <Route path="/companies/:code" element={<CompanyDetailPage />} />
+          <Route path="/companies/:code/facts" element={<CompanyFactsPage />} />
+        </Route>
       </Routes>
     </Router>
   );
