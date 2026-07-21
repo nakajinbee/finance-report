@@ -1,4 +1,6 @@
 import type { FinancialRecord, RatioRecord } from "../api/client";
+import { formatYenForDisplay, yenToOku } from "./formatCurrency";
+import { formatByRatioFormat } from "./formatRatio";
 
 export type RatioKey = Exclude<keyof RatioRecord, "fiscal_year" | "period_end">;
 
@@ -169,4 +171,56 @@ export function toChartValue(value: number | null, format: RatioFormat): number 
     return null;
   }
   return format === "percent" ? value * 100 : value;
+}
+
+// グラフに指標本体と内訳（生の金額）の両方を表示するための統一エントリ（ユーザー要望、2026-07-22）。
+// 指標本体は%・回・円・倍軸（既存のaxis指定）、内訳（生の金額）は億円軸に統一して2軸目に表示する
+export type CategoryChartEntry = {
+  key: string;
+  label: string;
+  color: string;
+  axis: "left" | "right";
+  isComponent: boolean;
+  getChartValue: (financial: FinancialRecord | undefined, ratio: RatioRecord | undefined) => number | null;
+  getDisplayValue: (financial: FinancialRecord | undefined, ratio: RatioRecord | undefined) => string;
+};
+
+// 内訳（生の金額）系列の色。指標本体の色（Tableau10系）とは別系統にして見分けやすくする
+const COMPONENT_COLORS = ["#BAB0AC", "#D37295", "#8CD17D", "#FABFD2", "#9D7660"];
+
+export function buildCategoryChartEntries(definitions: RatioMetricDefinition[]): CategoryChartEntry[] {
+  const ratioEntries: CategoryChartEntry[] = definitions.map((metric) => ({
+    key: metric.key,
+    label: metric.label,
+    color: metric.color,
+    axis: metric.axis ?? "left",
+    isComponent: false,
+    getChartValue: (_financial, ratio) => (ratio ? toChartValue(getRatioValue(ratio, metric.key), metric.format) : null),
+    getDisplayValue: (_financial, ratio) => formatByRatioFormat(ratio ? getRatioValue(ratio, metric.key) : null, metric.format),
+  }));
+
+  const seenComponentKeys = new Set<string>();
+  const componentEntries: CategoryChartEntry[] = [];
+  for (const metric of definitions) {
+    for (const component of metric.components ?? []) {
+      if (seenComponentKeys.has(component.key)) {
+        continue;
+      }
+      seenComponentKeys.add(component.key);
+      componentEntries.push({
+        key: component.key,
+        label: component.label,
+        color: COMPONENT_COLORS[componentEntries.length % COMPONENT_COLORS.length],
+        axis: "right",
+        isComponent: true,
+        getChartValue: (financial, ratio) => {
+          const yen = getComponentValue(financial, ratio, component);
+          return yen === null ? null : yenToOku(yen);
+        },
+        getDisplayValue: (financial, ratio) => formatYenForDisplay(getComponentValue(financial, ratio, component)),
+      });
+    }
+  }
+
+  return [...ratioEntries, ...componentEntries];
 }

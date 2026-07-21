@@ -1,21 +1,27 @@
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import type { RatioRecord } from "../api/client";
-import { formatByRatioFormat } from "../lib/formatRatio";
-import { getRatioValue, toChartValue, type RatioKey, type RatioMetricDefinition } from "../lib/ratioCategories";
+import type { FinancialRecord, RatioRecord } from "../api/client";
+import type { CategoryChartEntry } from "../lib/ratioCategories";
 
 type RatioCategoryChartProps = {
-  records: RatioRecord[];
-  definitions: RatioMetricDefinition[];
-  activeKeys: Set<RatioKey>;
+  financialRecords: FinancialRecord[];
+  ratioRecords: RatioRecord[];
+  entries: CategoryChartEntry[];
+  activeKeys: Set<string>;
 };
 
-type ChartDatum = { fiscal_year: string } & Partial<Record<RatioKey, number | null>>;
+type ChartDatum = { fiscal_year: string } & Record<string, number | null | string>;
 
-function toChartData(records: RatioRecord[], definitions: RatioMetricDefinition[]): ChartDatum[] {
-  return records.map((record) => {
-    const datum: ChartDatum = { fiscal_year: record.fiscal_year };
-    for (const metric of definitions) {
-      datum[metric.key] = toChartValue(getRatioValue(record, metric.key), metric.format);
+function toChartData(
+  financialRecords: FinancialRecord[],
+  ratioRecords: RatioRecord[],
+  entries: CategoryChartEntry[],
+): ChartDatum[] {
+  const financialByPeriod = new Map(financialRecords.map((record) => [record.period_end, record]));
+  return ratioRecords.map((ratio) => {
+    const financial = financialByPeriod.get(ratio.period_end);
+    const datum: ChartDatum = { fiscal_year: ratio.fiscal_year };
+    for (const entry of entries) {
+      datum[entry.key] = entry.getChartValue(financial, ratio);
     }
     return datum;
   });
@@ -24,46 +30,44 @@ function toChartData(records: RatioRecord[], definitions: RatioMetricDefinition[
 function ChartTooltip({
   active,
   label,
-  records,
-  definitions,
+  financialRecords,
+  ratioRecords,
+  entries,
   activeKeys,
 }: {
   active?: boolean;
   label?: string;
-  records: RatioRecord[];
-  definitions: RatioMetricDefinition[];
-  activeKeys: Set<RatioKey>;
+  financialRecords: FinancialRecord[];
+  ratioRecords: RatioRecord[];
+  entries: CategoryChartEntry[];
+  activeKeys: Set<string>;
 }) {
   if (!active) {
     return null;
   }
-  const record = records.find((r) => r.fiscal_year === label);
-  if (!record) {
+  const ratio = ratioRecords.find((r) => r.fiscal_year === label);
+  if (!ratio) {
     return null;
   }
+  const financial = financialRecords.find((r) => r.period_end === ratio.period_end);
   return (
     <div className="rounded border border-gray-200 bg-white px-3 py-2 shadow">
       <p className="mb-1 font-medium">{label}</p>
-      {definitions
-        .filter((metric) => activeKeys.has(metric.key))
-        .map((metric) => (
-          <p key={metric.key} style={{ color: metric.color }}>
-            {metric.label}：{formatByRatioFormat(getRatioValue(record, metric.key), metric.format)}
+      {entries
+        .filter((entry) => activeKeys.has(entry.key))
+        .map((entry) => (
+          <p key={entry.key} style={{ color: entry.color }}>
+            {entry.label}：{entry.getDisplayValue(financial, ratio)}
           </p>
         ))}
     </div>
   );
 }
 
-function unitsFor(definitions: RatioMetricDefinition[], axis: "left" | "right"): string {
-  const units = Array.from(new Set(definitions.filter((d) => (d.axis ?? "left") === axis).map((d) => d.unit)));
-  return units.join("・");
-}
-
-export function RatioCategoryChart({ records, definitions, activeKeys }: RatioCategoryChartProps) {
-  const chartData = toChartData(records, definitions);
-  const activeDefinitions = definitions.filter((metric) => activeKeys.has(metric.key));
-  const hasDualAxis = definitions.some((metric) => metric.axis === "right");
+export function RatioCategoryChart({ financialRecords, ratioRecords, entries, activeKeys }: RatioCategoryChartProps) {
+  const chartData = toChartData(financialRecords, ratioRecords, entries);
+  const activeEntries = entries.filter((entry) => activeKeys.has(entry.key));
+  const hasDualAxis = entries.some((entry) => entry.axis === "right");
 
   return (
     <ResponsiveContainer width="100%" height={280}>
@@ -72,21 +76,30 @@ export function RatioCategoryChart({ records, definitions, activeKeys }: RatioCa
         <XAxis dataKey="fiscal_year" />
         {hasDualAxis ? (
           <>
-            <YAxis yAxisId="left" unit={unitsFor(definitions, "left")} />
-            <YAxis yAxisId="right" orientation="right" unit={unitsFor(definitions, "right")} />
+            <YAxis yAxisId="left" />
+            <YAxis yAxisId="right" orientation="right" />
           </>
         ) : (
-          <YAxis unit={definitions[0]?.unit} />
+          <YAxis />
         )}
-        <Tooltip content={<ChartTooltip records={records} definitions={definitions} activeKeys={activeKeys} />} />
+        <Tooltip
+          content={
+            <ChartTooltip
+              financialRecords={financialRecords}
+              ratioRecords={ratioRecords}
+              entries={entries}
+              activeKeys={activeKeys}
+            />
+          }
+        />
         <Legend />
-        {activeDefinitions.map((metric) => (
+        {activeEntries.map((entry) => (
           <Bar
-            key={metric.key}
-            dataKey={metric.key}
-            name={metric.label}
-            fill={metric.color}
-            yAxisId={hasDualAxis ? (metric.axis ?? "left") : undefined}
+            key={entry.key}
+            dataKey={entry.key}
+            name={entry.label}
+            fill={entry.color}
+            yAxisId={hasDualAxis ? entry.axis : undefined}
           />
         ))}
       </BarChart>
