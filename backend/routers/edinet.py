@@ -91,7 +91,7 @@ def _fact_exists_for_period(session, company_code: str, period_end: date) -> boo
 def _expected_period_end(filer_info: edinet_client.FilerInfo, year: int, doc_type_code: str) -> date:
     if doc_type_code == edinet_client.DOC_TYPE_CODE_SEMI_ANNUAL_REPORT:
         return edinet_client.half_fiscal_year_end(filer_info.fiscal_year_end_month, filer_info.fiscal_year_end_day, year)
-    return date(year, filer_info.fiscal_year_end_month, filer_info.fiscal_year_end_day)
+    return edinet_client.fiscal_year_end_date(filer_info.fiscal_year_end_month, filer_info.fiscal_year_end_day, year)
 
 
 def _fiscal_year_label(period_end: date, doc_type_code: str) -> str:

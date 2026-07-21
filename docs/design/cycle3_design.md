@@ -1,0 +1,152 @@
+# サイクル3 設計書
+
+対象：[cycle3_requirements.md](../requirements/cycle3_requirements.md) FR-17〜19
+（画面・API契約への変更なし。バックエンド内部のマッピング・パースロジックのみが対象）
+
+前提となるドメイン知識：[docs/domain/xbrl_tagging_variability.md](../domain/xbrl_tagging_variability.md)
+
+---
+
+## 1. FR-17：候補element_idマッピング化（ローカル名照合）
+
+### データ構造（`backend/metric_mappings.py`）
+
+現行（サイクル2まで）：
+```python
+FIVE_METRICS: dict[str, dict[str, tuple[str, str]]]
+# 例： "IFRS": {"revenue": ("jpcrp_cor:RevenueIFRSSummaryOfBusinessResults", "CurrentYearDuration")}
+```
+
+変更後：
+```python
+# 指標ごとのコンテキストID種別（会計基準・企業によらず一定）
+METRIC_CONTEXT_ID: dict[str, str] = {
+    "revenue": "CurrentYearDuration",
+    "operating_profit": "CurrentYearDuration",
+    "net_profit": "CurrentYearDuration",
+    "total_assets": "CurrentYearInstant",
+    "total_liabilities": "CurrentYearInstant",
+}
+
+# 値はローカル名（要素IDのコロン以降）の候補リスト。優先順位付き
+FIVE_METRICS: dict[str, dict[str, list[str]]]
+# 例： "IFRS": {"revenue": ["RevenueIFRSSummaryOfBusinessResults", "OperatingRevenuesIFRSKeyFinancialData"]}
+```
+
+`CASH_FLOW`も同様に`dict[str, dict[str, list[str]]]`へ変更する。`CASH_FLOW_CONTEXT_ID`
+（`"CurrentYearDuration"`固定）はそのまま維持する（キャッシュフロー3項目はすべてduration概念のため、
+`METRIC_CONTEXT_ID`のような指標別の出し分けは不要）。
+
+候補リストの内容は[cycle3_requirements.md](../requirements/cycle3_requirements.md)の
+FR-17に列挙した、実機検証済みのローカル名のみを追加する。
+
+### マッチングロジック（`backend/routers/companies.py`）
+
+```
+_local_name(element_id) -> str
+    element_id.split(":")[-1] を返す（名前空間プレフィックスを除いたローカル名）
+
+_index_facts_by_period(facts) -> dict[period_end, dict[(local_name, context_id), value]]
+    facts一覧を「期間ごとの (ローカル名, コンテキストID) → 値」の索引に変換する
+
+_lookup_metric(period_index, candidates, context_id) -> value | None
+    candidatesを優先順に、各候補について
+    (candidate, context_id) → 見つからなければ (candidate, context_id + "_NonConsolidatedMember")
+    の順で索引を引く。最初に見つかった値を返す（FR-18のフォールバックをここに統合する）
+```
+
+`_build_financial_records`・`_build_cash_flow_records`は、
+`_index_facts_by_period`で作った索引に対し、指標ごとに`_lookup_metric`を呼ぶ形に変更する。
+1件もマッチしない期間はこれまで通りレコード自体を作らない（サイクル2までの挙動を維持）。
+
+### 入力・処理・出力
+
+| 項目 | 内容 |
+|------|------|
+| 入力 | `Fact`一覧（DB、TBL-003）、会計基準（`Company.accounting_standard`） |
+| 処理 | 上記マッチングロジックで指標ごとに値を検索 |
+| 出力 | `FinancialRecord`・`CashFlowRecord`（サイクル2までと型・フィールドは変更なし） |
+| 該当なしの場合 | 指標値は`None`（＝「データなし」、FR-03を踏襲、画面側の変更不要） |
+
+---
+
+## 2. FR-18：非連結コンテキストIDフォールバック
+
+設計は上記`_lookup_metric`に統合済み（`metric_mappings.NON_CONSOLIDATED_CONTEXT_SUFFIX`という
+定数名で`"_NonConsolidatedMember"`を定義し、ハードコードしない）。
+
+**エラー・例外ケース**：連結・非連結どちらのコンテキストでも見つからない場合は、
+FR-17と同じく「データなし」として扱う（新たな失敗モードを導入しない）。
+
+**設計時の確認事項**：連結・非連結の判別は`facts.consolidated_or_individual`列
+（CSVの「連結・個別」列をそのまま保存したもの）ではなく、**コンテキストIDの
+`_NonConsolidatedMember`サフィックスの有無**で行う。実データを確認したところ、
+`consolidated_or_individual`列は`_NonConsolidatedMember`コンテキストの行でも
+`"個別"`・`"その他"`など値が一定しておらず（大本組で実機確認）、判別の根拠として
+信頼できないことがわかったため。
+
+---
+
+## 3. FR-19：決算日「N月末日」表記への対応
+
+### データ構造（`backend/edinet_client.py`）
+
+```python
+FISCAL_YEAR_END_LAST_DAY_OF_MONTH = 0  # 「月末」を表すセンチネル値（dayとしては無効な値のため衝突しない）
+```
+
+`FilerInfo.fiscal_year_end_day`はこれまで通り`int | None`のままとし、値として
+`FISCAL_YEAR_END_LAST_DAY_OF_MONTH`（`0`）を取りうるようにする（型は変更しない。
+`None`＝「決算日が不明」、`0`＝「月末日（具体的な日は年による）」を区別する）。
+
+### 処理フロー
+
+```
+_parse_fiscal_year_end(raw: str) -> (month, day)
+    1. "N月末日" パターンにマッチ → (month, FISCAL_YEAR_END_LAST_DAY_OF_MONTH)
+    2. "N月N日" パターンにマッチ → (month, day)
+    3. どちらにもマッチしない → (None, None)  ※サイクル2までと同じ、変更なし
+
+fiscal_year_end_date(month, day, year) -> date
+    dayがFISCAL_YEAR_END_LAST_DAY_OF_MONTHなら calendar.monthrange(year, month) で
+    実際の月末日に解決してからdate()を構築する。それ以外はdayをそのまま使う
+```
+
+`edinet_client.py`・`routers/edinet.py`内で`date(year, month, day)`のように
+`fiscal_year_end_day`を直接`date()`に渡している箇所（
+`determine_latest_available_fiscal_year`・`fiscal_year_start`・`half_fiscal_year_end`・
+`report_search_center`・`routers/edinet.py`の`_expected_period_end`）を、
+すべて`fiscal_year_end_date()`経由に置き換える。
+
+### エラー・例外ケース
+
+- 「N月末日」「N月N日」以外の未知の表記　→ 従来通り`(None, None)`。ダウンロードフロー
+  （FR-09、`routers/edinet.py`の`run_download_job`）は既存のエラーメッセージ
+  「証券コードまたは決算日が不明なため、ダウンロードできません」を返す（変更なし）
+
+---
+
+## 性能・セキュリティ・拡張性（self_review_rule.md 2〜4節）
+
+- **性能**：`_lookup_metric`は候補リスト×コンテキスト2種の走査だが、候補数は指標あたり
+  最大3件程度、1企業のfacts件数（数百〜数千件）に対して無視できるオーダー。EDINET APIの
+  呼び出し回数・レート制限には影響しない（本サイクルはEDINET通信部分を変更しない）
+- **セキュリティ**：新規の外部入力・新規APIエンドポイントを追加しないため、変更なし
+- **拡張性**：候補リスト方式にしたことで、今後新しい企業で未知のタグが見つかった場合も
+  `metric_mappings.py`にローカル名を1行追加するだけで対応できる（コード変更不要）。
+  非連結コンテキストのフォールバックも指標ごとに個別実装せず共通化しているため、
+  新しい指標を追加する際も自動的に適用される
+
+---
+
+## 検証方法
+
+[cycle3_company_verification.md](../requirements/cycle3_company_verification.md)の10社分の
+実データ（スクラッチパッドに保存済みのCSV）を使い、実装後に以下を確認する：
+
+1. サイクル2で検証済みの3社（リクルートHD・任天堂・野村ホールディングス）が、変更前と
+   同じ結果になること（NFR-07：回帰確認）
+2. トヨタ自動車の売上高、大本組の全指標、良品計画のダウンロード可否・売上高が、
+   変更後に正しく取得できること
+3. 正興電機製作所・太陽化学・フジックス・武田薬品工業（変更前から問題なし）が、
+   変更後も引き続き正しく取得できること

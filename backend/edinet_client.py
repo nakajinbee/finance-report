@@ -176,19 +176,42 @@ class FilerInfo:
 
 
 _FISCAL_YEAR_END_PATTERN = re.compile(r"(\d+)月(\d+)日")
+# 「N月末日」表記（例："8月末日"）向け。日付を明記せず月末を指す企業が存在する
+# （良品計画E03248で実機確認、FR-19）。何日が月末かは年（うるう年等）によって変わるため、
+# ここではFISCAL_YEAR_END_LAST_DAY_OF_MONTHという特別な値を返し、実際の日付が必要になった
+# 時点（年が確定した時点）でfiscal_year_end_date()を使って解決する
+_FISCAL_YEAR_END_MONTH_END_PATTERN = re.compile(r"(\d+)月末日")
+FISCAL_YEAR_END_LAST_DAY_OF_MONTH = 0
 
 _filer_info_cache: list[FilerInfo] | None = None
 
 
 def _parse_fiscal_year_end(raw: str) -> tuple[int | None, int | None]:
-    """EDINETコードリストの「決算日」列（例："3月31日"）をパースする
+    """EDINETコードリストの「決算日」列（例："3月31日"・"8月末日"）をパースする
 
     ファンド等、決算日が"－"で埋まっている行もあるため、パースできない場合は(None, None)。
     """
+    month_end_match = _FISCAL_YEAR_END_MONTH_END_PATTERN.match(raw)
+    if month_end_match is not None:
+        return int(month_end_match.group(1)), FISCAL_YEAR_END_LAST_DAY_OF_MONTH
+
     match = _FISCAL_YEAR_END_PATTERN.match(raw)
     if match is None:
         return None, None
     return int(match.group(1)), int(match.group(2))
+
+
+def _resolve_fiscal_year_end_day(year: int, month: int, day: int) -> int:
+    """fiscal_year_end_dayがFISCAL_YEAR_END_LAST_DAY_OF_MONTHの場合、実際の月末日に解決する"""
+    if day == FISCAL_YEAR_END_LAST_DAY_OF_MONTH:
+        return calendar.monthrange(year, month)[1]
+    return day
+
+
+def fiscal_year_end_date(fiscal_year_end_month: int, fiscal_year_end_day: int, year: int) -> date:
+    """決算月日とyearから実際のdateを構築する（「N月末日」表記の解決を含む、FR-19）"""
+    day = _resolve_fiscal_year_end_day(year, fiscal_year_end_month, fiscal_year_end_day)
+    return date(year, fiscal_year_end_month, day)
 
 
 def _load_filer_info_cache() -> list[FilerInfo]:
@@ -262,7 +285,7 @@ def determine_latest_available_fiscal_year(today: date, fiscal_year_end_month: i
     前年分までが直近の提出済み分となる（memo/リクルートデータ取得メモ.md の3月決算固定
     ロジックを任意の決算月日に一般化したもの。dateの加減算で年またぎも自動的に扱える）。
     """
-    fiscal_year_end_this_year = date(today.year, fiscal_year_end_month, fiscal_year_end_day)
+    fiscal_year_end_this_year = fiscal_year_end_date(fiscal_year_end_month, fiscal_year_end_day, today.year)
     filing_deadline = fiscal_year_end_this_year + timedelta(days=90)
     return today.year if today >= filing_deadline else today.year - 1
 
@@ -289,7 +312,7 @@ SEMI_ANNUAL_REPORT_TRANSITION_DATE = date(2024, 4, 1)
 
 def fiscal_year_start(fiscal_year_end_month: int, fiscal_year_end_day: int, target_year: int) -> date:
     """target_year年の決算に対応する事業年度の開始日を返す（前年の決算日の翌日）"""
-    previous_fiscal_year_end = date(target_year - 1, fiscal_year_end_month, fiscal_year_end_day)
+    previous_fiscal_year_end = fiscal_year_end_date(fiscal_year_end_month, fiscal_year_end_day, target_year - 1)
     return previous_fiscal_year_end + timedelta(days=1)
 
 
@@ -304,7 +327,7 @@ def semi_annual_report_required(fiscal_year_end_month: int, fiscal_year_end_day:
 
 def half_fiscal_year_end(fiscal_year_end_month: int, fiscal_year_end_day: int, target_year: int) -> date:
     """target_year年の決算に対応する半期末日を返す（決算日の6ヶ月前、FR-08）"""
-    fiscal_year_end = date(target_year, fiscal_year_end_month, fiscal_year_end_day)
+    fiscal_year_end = fiscal_year_end_date(fiscal_year_end_month, fiscal_year_end_day, target_year)
     return _shift_months(fiscal_year_end, 6)
 
 
@@ -320,5 +343,5 @@ def report_search_center(
     if doc_type_code == DOC_TYPE_CODE_SEMI_ANNUAL_REPORT:
         period_end = half_fiscal_year_end(fiscal_year_end_month, fiscal_year_end_day, target_year)
     else:
-        period_end = date(target_year, fiscal_year_end_month, fiscal_year_end_day)
+        period_end = fiscal_year_end_date(fiscal_year_end_month, fiscal_year_end_day, target_year)
     return period_end + timedelta(days=REPORT_FILING_DEADLINE_DAYS[doc_type_code])

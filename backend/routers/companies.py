@@ -31,23 +31,51 @@ def _filter_by_year_range(facts: list[Fact], from_year: int | None, to_year: int
     ]
 
 
+def _local_name(element_id: str) -> str:
+    """要素IDのコロン以降のローカル名を返す（企業固有拡張タグの名前空間部分を除く、FR-17）"""
+    return element_id.split(":")[-1]
+
+
+def _index_facts_by_period(facts: list[Fact]) -> dict[date, dict[tuple[str, str], int]]:
+    """factsを期間ごとに(ローカル名, コンテキストID)→値の辞書へ変換する（FR-17）"""
+    index: dict[date, dict[tuple[str, str], int]] = {}
+    for fact in facts:
+        index.setdefault(fact.period_end, {})[(_local_name(fact.element_id), fact.context_id)] = int(fact.value)
+    return index
+
+
+def _lookup_metric(period_index: dict[tuple[str, str], int], candidates: list[str], context_id: str) -> int | None:
+    """候補ローカル名を優先順に探し、最初に一致した値を返す（FR-17）
+
+    連結子会社を持たない企業は経営指標等サマリーが個別ベースのみで提出され、
+    コンテキストIDにNON_CONSOLIDATED_CONTEXT_SUFFIXが付くため、そちらもフォールバックで試す
+    （FR-18。連結・非連結の判別はコンテキストIDのサフィックスで行い、facts.consolidated_or_individual
+    列は使わない。この列は実データ上値が一定せず判別に使えないことを確認済み
+    ＝docs/design/cycle3_design.md参照）。
+    """
+    for local_name in candidates:
+        for ctx in (context_id, context_id + metric_mappings.NON_CONSOLIDATED_CONTEXT_SUFFIX):
+            value = period_index.get((local_name, ctx))
+            if value is not None:
+                return value
+    return None
+
+
 def _build_financial_records(facts: list[Fact], accounting_standard: str) -> list[schemas.FinancialRecord]:
     """企業の会計基準に応じたmetric_mappings.FIVE_METRICSを使い、factsから5指標を組み立てる"""
-    element_id_to_metric_name = {
-        element_id: metric_name
-        for metric_name, (element_id, _context_id) in metric_mappings.FIVE_METRICS.get(accounting_standard, {}).items()
-    }
-
-    values_by_period: dict[date, dict[str, int]] = {}
-    for fact in facts:
-        metric_name = element_id_to_metric_name.get(fact.element_id)
-        if metric_name is None:
-            continue
-        values_by_period.setdefault(fact.period_end, {})[metric_name] = int(fact.value)
+    metric_candidates = metric_mappings.FIVE_METRICS.get(accounting_standard, {})
+    period_index = _index_facts_by_period(facts)
 
     records = []
-    for period_end in sorted(values_by_period):
-        values = values_by_period[period_end]
+    for period_end in sorted(period_index):
+        values = {
+            metric_name: _lookup_metric(
+                period_index[period_end], candidates, metric_mappings.METRIC_CONTEXT_ID[metric_name]
+            )
+            for metric_name, candidates in metric_candidates.items()
+        }
+        if not any(value is not None for value in values.values()):
+            continue
         records.append(
             schemas.FinancialRecord(
                 fiscal_year=f"{period_end.year}年{period_end.month}月期",
@@ -64,21 +92,17 @@ def _build_financial_records(facts: list[Fact], accounting_standard: str) -> lis
 
 def _build_cash_flow_records(facts: list[Fact], accounting_standard: str) -> list[schemas.CashFlowRecord]:
     """企業の会計基準に応じたmetric_mappings.CASH_FLOWを使い、factsから営業・投資・財務CFを組み立てる（FR-13）"""
-    element_id_to_cf_name = {
-        element_id: cf_name
-        for cf_name, element_id in metric_mappings.CASH_FLOW.get(accounting_standard, {}).items()
-    }
-
-    values_by_period: dict[date, dict[str, int]] = {}
-    for fact in facts:
-        cf_name = element_id_to_cf_name.get(fact.element_id)
-        if cf_name is None:
-            continue
-        values_by_period.setdefault(fact.period_end, {})[cf_name] = int(fact.value)
+    cf_candidates = metric_mappings.CASH_FLOW.get(accounting_standard, {})
+    period_index = _index_facts_by_period(facts)
 
     records = []
-    for period_end in sorted(values_by_period):
-        values = values_by_period[period_end]
+    for period_end in sorted(period_index):
+        values = {
+            cf_name: _lookup_metric(period_index[period_end], candidates, metric_mappings.CASH_FLOW_CONTEXT_ID)
+            for cf_name, candidates in cf_candidates.items()
+        }
+        if not any(value is not None for value in values.values()):
+            continue
         records.append(
             schemas.CashFlowRecord(
                 fiscal_year=f"{period_end.year}年{period_end.month}月期",
