@@ -22,9 +22,11 @@ class FinancialRecord(BaseModel):
     period_end: date
     revenue: int | None = None
     operating_profit: int | None = None
+    ordinary_profit: int | None = None
     net_profit: int | None = None
     total_assets: int | None = None
     total_liabilities: int | None = None
+    equity: int | None = None
 
 
 class CompanyFinancials(BaseModel):

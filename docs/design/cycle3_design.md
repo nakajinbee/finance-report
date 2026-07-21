@@ -312,6 +312,39 @@ Pydanticモデル（`fiscal_year: str`・`period_end: date`・以下すべて`fl
 
 ---
 
+## 7. FR-27〜28：B/S・P/L分離、経常利益・自己資本、指標カテゴリ化
+
+### バックエンド
+- `metric_mappings.FIVE_METRICS`に`ordinary_profit`（Japan GAAPのみ）・`equity`
+  （IFRS・Japan GAAP、`BALANCE_SHEET_ITEMS`からは削除し重複を解消）を追加
+- `schemas.FinancialRecord`に`ordinary_profit: int | None`・`equity: int | None`を追加
+- `_build_ratio_records`の`equity_ratio`・`fixed_ratio`計算は、`bs.get("equity")`ではなく
+  `fin.equity`（`_build_financial_records`の結果を再利用）を参照するよう変更（実装済み・
+  実データ確認済み）
+- 既存API-COM-002のレスポンスにフィールドが増えるのみで、後方互換を維持する
+
+### フロントエンド
+- `frontend/src/lib/metrics.ts`：既存の`METRIC_DEFINITIONS`（5指標混在）を廃止し、
+  `BS_METRIC_DEFINITIONS`（total_assets・total_liabilities・equity）と
+  `PL_METRIC_DEFINITIONS`（revenue・operating_profit・ordinary_profit・net_profit）に分割する
+- 既存の`FinancialChart`・`MetricSelector`は特定の`METRIC_DEFINITIONS`に依存しない
+  ジェネリックな実装に変更し、B/S・P/Lそれぞれで再利用する（`MetricKey`型をジェネリック化）
+- `frontend/src/lib/ratioCategories.ts`（新規）：`DISCLOSED_RATIOS`・計算指標を
+  4カテゴリ（収益性・効率性・安全性・投資指標）に分類した定義を持つ
+- 収益性・効率性・安全性の3カテゴリは既存の`RatioSection`と同じ単一軸グラフ＋表のパターンを
+  再利用する。投資指標カテゴリのみ、EPS（円、左軸）とPER・配当性向（倍/%、右軸）の
+  2軸グラフにする（Rechartsの`yAxisId`を使い分ける）
+- SCR-003は「B/Sグラフ＋トグル」「P/Lグラフ＋トグル」「CFグラフ＋表（既存のまま）」
+  「財務分析指標（4カテゴリ、各グラフ＋トグル＋表）」という構成になる
+
+### エラー・例外ケース
+- 経常利益：IFRS・US GAAP企業では`FIVE_METRICS`に候補が存在しないため、常に`None`
+  （＝P/Lグラフのトグルで選択しても棒が描画されない）。既存の「データなし」方針を踏襲
+- 投資指標2軸グラフ：3指標中1つでもデータがない期は、その系列の棒/線のみ描画しない
+  （既存の`null`非描画パターンを踏襲）
+
+---
+
 ## 検証方法
 
 [cycle3_company_verification.md](../requirements/cycle3_company_verification.md)の10社分の

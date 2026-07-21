@@ -87,9 +87,11 @@ def _build_financial_records(facts: list[Fact], accounting_standard: str) -> lis
                 period_end=period_end,
                 revenue=values.get("revenue"),
                 operating_profit=values.get("operating_profit"),
+                ordinary_profit=values.get("ordinary_profit"),
                 net_profit=values.get("net_profit"),
                 total_assets=values.get("total_assets"),
                 total_liabilities=values.get("total_liabilities"),
+                equity=values.get("equity"),
             )
         )
     return records
@@ -145,7 +147,9 @@ def _build_ratio_records(facts: list[Fact], accounting_standard: str) -> list[sc
             continue
 
         disclosed = {
-            ratio_name: _lookup_metric(period_index[period_end], candidates, metric_mappings.DISCLOSED_RATIO_CONTEXT_ID)
+            ratio_name: _lookup_metric(
+                period_index[period_end], candidates, metric_mappings.DISCLOSED_RATIO_CONTEXT_ID[ratio_name]
+            )
             for ratio_name, candidates in disclosed_candidates.items()
         }
         bs = {
@@ -155,7 +159,7 @@ def _build_ratio_records(facts: list[Fact], accounting_standard: str) -> list[sc
 
         equity_ratio = disclosed.get("equity_ratio")
         if equity_ratio is None:
-            equity_ratio = _safe_div(bs.get("equity"), fin.total_assets)
+            equity_ratio = _safe_div(fin.equity, fin.total_assets)
 
         values = {
             "roe": disclosed.get("roe"),
@@ -168,7 +172,7 @@ def _build_ratio_records(facts: list[Fact], accounting_standard: str) -> list[sc
             "operating_margin": _safe_div(fin.operating_profit, fin.revenue),
             "net_margin": _safe_div(fin.net_profit, fin.revenue),
             "current_ratio": _safe_div(bs.get("current_assets"), bs.get("current_liabilities")),
-            "fixed_ratio": _safe_div(bs.get("non_current_assets"), bs.get("equity")),
+            "fixed_ratio": _safe_div(bs.get("non_current_assets"), fin.equity),
             "inventory_turnover": _safe_div(fin.revenue, bs.get("inventories")),
         }
         if not any(value is not None for value in values.values()):

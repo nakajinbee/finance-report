@@ -15,9 +15,11 @@ export type FinancialRecord = {
   period_end: string;
   revenue: number | null;
   operating_profit: number | null;
+  ordinary_profit: number | null;
   net_profit: number | null;
   total_assets: number | null;
   total_liabilities: number | null;
+  equity: number | null;
 };
 
 export type CompanyFinancials = {

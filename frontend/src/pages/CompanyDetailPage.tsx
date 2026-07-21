@@ -11,10 +11,15 @@ import {
 import { CashFlowChart } from "../components/CashFlowChart";
 import { CashFlowTable } from "../components/CashFlowTable";
 import { ErrorMessage } from "../components/ErrorMessage";
-import { FinancialChart } from "../components/FinancialChart";
-import { MetricSelector } from "../components/MetricSelector";
-import { RatioSection } from "../components/RatioSection";
-import { METRIC_DEFINITIONS, type MetricKey } from "../lib/metrics";
+import { FinancialMetricSection } from "../components/FinancialMetricSection";
+import { RatioCategorySection } from "../components/RatioCategorySection";
+import { BS_METRIC_DEFINITIONS, PL_METRIC_DEFINITIONS } from "../lib/metrics";
+import {
+  EFFICIENCY_RATIOS,
+  INVESTMENT_RATIOS,
+  PROFITABILITY_RATIOS,
+  SAFETY_RATIOS,
+} from "../lib/ratioCategories";
 
 type LoadState = "loading" | "loaded" | "not_found" | "error";
 
@@ -33,9 +38,6 @@ export function CompanyDetailPage() {
   const [availableYears, setAvailableYears] = useState<number[]>([]);
   const [fromYear, setFromYear] = useState<number | null>(null);
   const [toYear, setToYear] = useState<number | null>(null);
-  const [activeMetrics, setActiveMetrics] = useState<Set<MetricKey>>(
-    () => new Set(METRIC_DEFINITIONS.map((m) => m.key)),
-  );
 
   // 初回ロード：保存済みの全期間を取得し、年度選択の選択肢と初期選択（全期間）を決める
   useEffect(() => {
@@ -101,18 +103,6 @@ export function CompanyDetailPage() {
     };
   }, [code, fromYear, toYear]);
 
-  function toggleMetric(key: MetricKey) {
-    setActiveMetrics((current) => {
-      const next = new Set(current);
-      if (next.has(key)) {
-        next.delete(key);
-      } else {
-        next.add(key);
-      }
-      return next;
-    });
-  }
-
   if (loadState === "loading") {
     return <p className="p-8">データを読み込んでいます...</p>;
   }
@@ -128,10 +118,6 @@ export function CompanyDetailPage() {
   if (!financials) {
     return null;
   }
-
-  const hasAnyValue = financials.data.some((record) =>
-    METRIC_DEFINITIONS.some((metric) => record[metric.key] !== null),
-  );
 
   return (
     <div className="mx-auto max-w-3xl space-y-6 p-8">
@@ -188,26 +174,54 @@ export function CompanyDetailPage() {
         </div>
       )}
 
-      <MetricSelector activeMetrics={activeMetrics} onToggle={toggleMetric} />
-
-      {activeMetrics.size === 0 ? (
-        <p className="text-gray-500">指標を1つ以上選択してください</p>
-      ) : !hasAnyValue ? (
-        <p className="text-gray-500">表示できるデータがありません</p>
-      ) : (
-        <FinancialChart records={financials.data} activeMetrics={activeMetrics} />
-      )}
-
       {financials.data.length > 0 && (
-        <div className="space-y-2">
-          <h2 className="font-medium">キャッシュフロー計算書</h2>
-          <CashFlowChart records={cashFlow} />
-          <CashFlowTable financialRecords={financials.data} cashFlowRecords={cashFlow} />
-        </div>
-      )}
+        <>
+          <FinancialMetricSection
+            title="貸借対照表（B/S）"
+            records={financials.data}
+            definitions={BS_METRIC_DEFINITIONS}
+          />
 
-      {financials.data.length > 0 && (
-        <RatioSection financialRecords={financials.data} ratioRecords={ratios} />
+          <FinancialMetricSection
+            title="損益計算書（P/L）"
+            records={financials.data}
+            definitions={PL_METRIC_DEFINITIONS}
+          />
+
+          <div className="space-y-2">
+            <h2 className="font-medium">キャッシュフロー計算書</h2>
+            <CashFlowChart records={cashFlow} />
+            <CashFlowTable financialRecords={financials.data} cashFlowRecords={cashFlow} />
+          </div>
+
+          <div className="space-y-4">
+            <h2 className="font-medium">財務分析指標</h2>
+            <RatioCategorySection
+              title="収益性"
+              financialRecords={financials.data}
+              ratioRecords={ratios}
+              definitions={PROFITABILITY_RATIOS}
+            />
+            <RatioCategorySection
+              title="効率性"
+              financialRecords={financials.data}
+              ratioRecords={ratios}
+              definitions={EFFICIENCY_RATIOS}
+            />
+            <RatioCategorySection
+              title="安全性"
+              financialRecords={financials.data}
+              ratioRecords={ratios}
+              definitions={SAFETY_RATIOS}
+            />
+            <RatioCategorySection
+              title="投資指標"
+              financialRecords={financials.data}
+              ratioRecords={ratios}
+              definitions={INVESTMENT_RATIOS}
+            />
+          </div>
+        </>
       )}
     </div>
   );

@@ -21,3 +21,14 @@ export function formatNumberForDisplay(value: number | null): string {
   }
   return value.toFixed(2);
 }
+
+/** RatioFormat（"percent"|"turnover"|"number"）に応じたフォーマット関数へ振り分ける */
+export function formatByRatioFormat(value: number | null, format: "percent" | "turnover" | "number"): string {
+  if (format === "percent") {
+    return formatPercentForDisplay(value);
+  }
+  if (format === "turnover") {
+    return formatTurnoverForDisplay(value);
+  }
+  return formatNumberForDisplay(value);
+}

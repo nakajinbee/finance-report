@@ -19,12 +19,14 @@ docs/domain/xbrl_tagging_variability.md、docs/requirements/cycle3_requirements.
 METRIC_CONTEXT_ID: dict[str, str] = {
     "revenue": "CurrentYearDuration",
     "operating_profit": "CurrentYearDuration",
+    "ordinary_profit": "CurrentYearDuration",
     "net_profit": "CurrentYearDuration",
     "total_assets": "CurrentYearInstant",
     "total_liabilities": "CurrentYearInstant",
+    "equity": "CurrentYearInstant",
 }
 
-# SCR-003のグラフ5指標（売上高・営業利益・純利益・総資産・負債合計）
+# SCR-003のP/L・B/Sグラフ用の指標（売上高・営業利益・経常利益・純利益・総資産・負債・自己資本）
 # 値はローカル名（要素IDのコロン以降）の候補リスト。優先順位付き
 FIVE_METRICS: dict[str, dict[str, list[str]]] = {
     "IFRS": {
@@ -34,9 +36,12 @@ FIVE_METRICS: dict[str, dict[str, list[str]]] = {
             "OperatingRevenuesIFRSKeyFinancialData",
         ],
         "operating_profit": ["OperatingProfitLossIFRS"],
+        # 経常利益はJapan GAAP特有の概念のため、IFRSには対応する候補を追加しない
+        # （IFRSに「経常」区分は存在しない。常にデータなしとなる、2026-07-22ユーザー承認済み）
         "net_profit": ["ProfitLossAttributableToOwnersOfParentIFRSSummaryOfBusinessResults"],
         "total_assets": ["TotalAssetsIFRSSummaryOfBusinessResults"],
         "total_liabilities": ["LiabilitiesIFRS"],
+        "equity": ["EquityIFRS"],
     },
     "Japan GAAP": {
         "revenue": [
@@ -45,6 +50,7 @@ FIVE_METRICS: dict[str, dict[str, list[str]]] = {
             "OperatingRevenue1SummaryOfBusinessResults",
         ],
         "operating_profit": ["OperatingIncome"],
+        "ordinary_profit": ["OrdinaryIncomeLossSummaryOfBusinessResults"],
         "net_profit": [
             "ProfitLossAttributableToOwnersOfParentSummaryOfBusinessResults",
             # 連結子会社を持たない企業は「親会社株主に帰属する」概念がないため、
@@ -53,6 +59,7 @@ FIVE_METRICS: dict[str, dict[str, list[str]]] = {
         ],
         "total_assets": ["TotalAssetsSummaryOfBusinessResults"],
         "total_liabilities": ["Liabilities"],
+        "equity": ["NetAssets"],
     },
     "US GAAP": {
         "revenue": ["RevenuesUSGAAPSummaryOfBusinessResults"],
@@ -89,13 +96,24 @@ CASH_FLOW: dict[str, dict[str, list[str]]] = {
 NON_CONSOLIDATED_CONTEXT_SUFFIX = "_NonConsolidatedMember"
 
 # グループA：EDINET自己開示の比率指標（FR-23）。値はローカル名の候補リスト
-DISCLOSED_RATIO_CONTEXT_ID = "CurrentYearDuration"
+# コンテキストIDは比率ごとに異なる（ROE・EPS・PER・配当性向は期間概念でDuration、
+# 自己資本比率は貸借対照表の時点概念でInstant。2026-07-22、リクルートHD・任天堂の
+# 実データで確認済み。equity_ratioをDurationで引いていたバグを発見・修正）
+DISCLOSED_RATIO_CONTEXT_ID: dict[str, str] = {
+    "roe": "CurrentYearDuration",
+    "equity_ratio": "CurrentYearInstant",
+    "eps": "CurrentYearDuration",
+    "per": "CurrentYearDuration",
+    "payout_ratio": "CurrentYearDuration",
+}
 DISCLOSED_RATIOS: dict[str, dict[str, list[str]]] = {
     "IFRS": {
         "roe": ["RateOfReturnOnEquityIFRSSummaryOfBusinessResults"],
         "equity_ratio": ["RatioOfOwnersEquityToGrossAssetsIFRSSummaryOfBusinessResults"],
         "eps": ["BasicEarningsLossPerShareIFRSSummaryOfBusinessResults"],
         "per": ["PriceEarningsRatioIFRSSummaryOfBusinessResults"],
+        # 配当性向のタグは会計基準によらず共通（リクルートHDで確認済み、2026-07-22）
+        "payout_ratio": ["PayoutRatioSummaryOfBusinessResults"],
     },
     "Japan GAAP": {
         "roe": ["RateOfReturnOnEquitySummaryOfBusinessResults"],
@@ -110,20 +128,19 @@ DISCLOSED_RATIOS: dict[str, dict[str, list[str]]] = {
 }
 
 # グループC：比率計算に必要な追加の貸借対照表項目（FR-25）。値はローカル名の候補リスト
+# 自己資本（equity）はFIVE_METRICSで既に取得済みのため、ここには含めない（重複回避）
 BALANCE_SHEET_CONTEXT_ID = "CurrentYearInstant"
 BALANCE_SHEET_ITEMS: dict[str, dict[str, list[str]]] = {
     "IFRS": {
         "current_assets": ["CurrentAssetsIFRS"],
         "current_liabilities": ["TotalCurrentLiabilitiesIFRS"],
         "non_current_assets": ["NonCurrentAssetsIFRS"],
-        "equity": ["EquityIFRS"],
         "inventories": ["InventoriesCAIFRS"],
     },
     "Japan GAAP": {
         "current_assets": ["CurrentAssets"],
         "current_liabilities": ["CurrentLiabilities"],
         "non_current_assets": ["NoncurrentAssets"],
-        "equity": ["NetAssets"],
         "inventories": ["Inventories"],
     },
     # US GAAP：FR-20と同じ理由（連結ベースの内訳が経営指標等・主財務諸表とも存在しない、

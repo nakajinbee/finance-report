@@ -1,16 +1,16 @@
-import type { MetricDefinition, MetricKey } from "../lib/metrics";
+import type { RatioKey, RatioMetricDefinition } from "../lib/ratioCategories";
 
-type MetricSelectorProps = {
-  definitions: MetricDefinition[];
-  activeMetrics: Set<MetricKey>;
-  onToggle: (key: MetricKey) => void;
+type RatioToggleProps = {
+  definitions: RatioMetricDefinition[];
+  activeKeys: Set<RatioKey>;
+  onToggle: (key: RatioKey) => void;
 };
 
-export function MetricSelector({ definitions, activeMetrics, onToggle }: MetricSelectorProps) {
+export function RatioToggle({ definitions, activeKeys, onToggle }: RatioToggleProps) {
   return (
     <div className="flex flex-wrap gap-2">
       {definitions.map((metric) => {
-        const isActive = activeMetrics.has(metric.key);
+        const isActive = activeKeys.has(metric.key);
         return (
           <button
             key={metric.key}
