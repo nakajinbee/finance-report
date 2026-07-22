@@ -41,7 +41,7 @@
 
 | ID | タイトル | ジャンル | 優先度 | いつ反映するか | ファイル |
 |---|---|---|---|---|---|
-| IDEA-01 | データ取得方式の刷新（都度参照→一括DB化） | エンジニアリング | 未定 | 未定 | [IDEA-01_db_batch_ingestion.md](IDEA-01_db_batch_ingestion.md) |
+| IDEA-01 | データ取得方式の刷新（都度参照→一括DB化） | エンジニアリング | 未定 | サイクル6で着手（フェーズ1） | [IDEA-01_db_batch_ingestion.md](IDEA-01_db_batch_ingestion.md) |
 | IDEA-02 | 企業一覧：検索結果のみ表示 | エンジニアリング | 未定 | 未定 | [IDEA-02_company_list_search_only.md](IDEA-02_company_list_search_only.md) |
 | IDEA-03 | 企業一覧：ソート機能 | エンジニアリング | 未定 | 未定 | [IDEA-03_company_list_sort.md](IDEA-03_company_list_sort.md) |
 | IDEA-04 | 企業一覧：業界絞り込み | エンジニアリング | 未定 | 未定 | [IDEA-04_company_list_sector_filter.md](IDEA-04_company_list_sector_filter.md) |

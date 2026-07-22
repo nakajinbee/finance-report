@@ -281,6 +281,11 @@ def _load_filer_info_cache() -> list[FilerInfo]:
     return _filer_info_cache
 
 
+def list_all_filers() -> list[FilerInfo]:
+    """EDINETコードリストの全提出者を返す（サイクル6 FR-39、一括登録バッチ用）"""
+    return _load_filer_info_cache()
+
+
 def fetch_filer_info(edinet_code: str) -> FilerInfo:
     """EDINETコードリストから指定edinet_codeの提出者情報を1件返す"""
     for filer in _load_filer_info_cache():

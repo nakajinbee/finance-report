@@ -17,7 +17,7 @@
 | code | String(10) | VARCHAR(10) | ✓ | ✓ | 証券コード（例：6098） |
 | name | String(255) | VARCHAR(255) | ✓ | | 企業名（例：リクルートホールディングス） |
 | sector | String(100) | VARCHAR(100) | | | 業種（例：サービス業）。EDINETの業種区分 |
-| accounting_standard | String(50) | VARCHAR(50) | ✓ | | 会計基準。EDINETのDEI要素（`jpdei_cor:AccountingStandardsDEI`）の値をそのまま保存する：`IFRS` / `Japan GAAP` / `US GAAP`（実機検証済み、`docs/domain/会計基準/会計基準の基礎知識.md`参照。サイクル1時点では`JapaneseGAAP`/`UnitedStatesGAAP`とスペースなしを想定していたが誤りだった） |
+| accounting_standard | String(50) | VARCHAR(50) | | | 会計基準。EDINETのDEI要素（`jpdei_cor:AccountingStandardsDEI`）の値をそのまま保存する：`IFRS` / `Japan GAAP` / `US GAAP`（実機検証済み、`docs/domain/会計基準/会計基準の基礎知識.md`参照。サイクル1時点では`JapaneseGAAP`/`UnitedStatesGAAP`とスペースなしを想定していたが誤りだった）。財務データ未取得の企業は`NULL`（サイクル6 FR-40、全上場企業マスタの一括登録で会計基準未判明のまま登録するため） |
 
 ---
 
@@ -40,3 +40,7 @@
   末尾5桁目が「普通株式は`0`」という一般的な慣例に基づく想定であり、全銘柄を網羅的に
   検証したわけではない。優先株のみを発行する企業など、想定外のケースがあれば
   ダウンロード時にエラーとして検知できるようにする（実装時の検討事項）
+- **サイクル6 FR-39（全上場企業マスタの一括登録）で全銘柄を網羅的に検証した**：
+  EDINETコードリストで証券コードを持つ全3,829件について、末尾が`0`でない例外は
+  **0件**だった（`backend/scripts/bulk_register_companies.py`実行時に実データで確認、
+  2026-07-22）。上記の「想定外のケース」は現時点では発生していない

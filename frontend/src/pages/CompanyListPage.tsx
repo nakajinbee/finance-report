@@ -97,7 +97,7 @@ export function CompanyListPage() {
                 <p className="font-medium">{company.name}</p>
                 <p className="text-sm text-gray-500">
                   {company.code} ｜ {company.sector ?? "業種不明"} ｜{" "}
-                  {company.accounting_standard}
+                  {company.accounting_standard ?? "データ未取得"}
                 </p>
               </button>
             </li>

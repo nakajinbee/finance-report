@@ -11,7 +11,7 @@ class Company(BaseModel):
     code: str
     name: str
     sector: str | None = None
-    accounting_standard: str
+    accounting_standard: str | None = None
     periods: list[date]
 
 

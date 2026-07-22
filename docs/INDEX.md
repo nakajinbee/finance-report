@@ -19,19 +19,19 @@ docs/
 ├── requirements/                         ← 要件定義（cycleN_requirements.md・レビュー結果）
 │   ├── self_review_rule.md
 │   ├── cycleX_backlog.md                 ← 「やる」と決まったが未着手の事項（一元管理）
-│   └── cycle1〜5_requirements.md / _review.md
+│   └── cycle1〜6_requirements.md / _review.md
 │
 ├── design/                               ← 設計
 │   ├── self_review_rule.md
 │   ├── design_guideline.md               ← 本番デザインコンセプト（配色・タイポグラフィ等、常に最終断面のみ）
-│   ├── cycle1,3,4,5_design.md / _review.md
+│   ├── cycle1,3,4,5,6_design.md / _review.md
 │   ├── screen/                           ← 画面定義書（詳細：screen/screen_list.md）
 │   ├── api/                              ← API設計書（詳細：api/api_list.md、openapi.yaml）
 │   └── table/                            ← テーブル定義書（詳細：table/table_list.md）
 │
 ├── development/                          ← 開発
 │   ├── self_review_rule.md
-│   ├── cycle2〜5_development_review.md
+│   ├── cycle2〜6_development_review.md
 │   ├── backend_implementation_policy.md
 │   ├── frontend_implementation_policy.md
 │   ├── date_format_policy.md             ← fiscal_year等の日付表記ルール（重要：動的再生成禁止）
@@ -62,10 +62,13 @@ docs/
 | サイクル3 | 財務分析指標（ROE等12指標）の追加 | 完了 |
 | サイクル4 | 共通ヘッダー・フッター、仮のデザイン整理 | 完了 |
 | サイクル5 | 本番デザインコンセプト策定・実装（design_guideline.md） | 完了 |
+| サイクル6 | 全上場企業マスタの一括登録（[IDEA-01](ideas/IDEA-01_db_batch_ingestion.md)フェーズ1のみ） | 完了 |
 | 次サイクル | 未定。[ideas/README.md](ideas/README.md)・[requirements/cycleX_backlog.md](requirements/cycleX_backlog.md)から検討 | 企画待ち |
 
-現時点で残っている大きな論点：アプリのコンセプト・想定利用者が未決定
-（[ideas/IDEA-10](ideas/IDEA-10_report_purpose_redesign.md)・[IDEA-13](ideas/IDEA-13_use_case_design.md)がこれ待ち）。
+現時点で残っている大きな論点：
+- アプリのコンセプト・想定利用者が未決定（[ideas/IDEA-10](ideas/IDEA-10_report_purpose_redesign.md)・[IDEA-13](ideas/IDEA-13_use_case_design.md)がこれ待ち）
+- [IDEA-01](ideas/IDEA-01_db_batch_ingestion.md)のフェーズ2以降（バッチ取得の技術検証・
+  財務データ全社一括取得・定期更新バッチ・フロントのDB参照切り替え・DB移行判断）が未着手
 
 ---
 

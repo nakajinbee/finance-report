@@ -34,7 +34,7 @@ class Company(Base):
     code: Mapped[str] = mapped_column(String(10), primary_key=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     sector: Mapped[str | None] = mapped_column(String(100), nullable=True)
-    accounting_standard: Mapped[str] = mapped_column(String(50), nullable=False)
+    accounting_standard: Mapped[str | None] = mapped_column(String(50), nullable=True)
 
 
 class Fact(Base):

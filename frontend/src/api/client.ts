@@ -6,7 +6,7 @@ export type Company = {
   code: string;
   name: string;
   sector: string | null;
-  accounting_standard: string;
+  accounting_standard: string | null;
   periods: string[]; // ISO date文字列（YYYY-MM-DD、docs/development/date_format_policy.md準拠）
 };
 

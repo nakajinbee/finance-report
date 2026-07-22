@@ -15,7 +15,8 @@ properties:
     example: サービス業
   accounting_standard:
     type: string
-    description: 会計基準
+    nullable: true
+    description: 会計基準（財務データ未取得の企業はnull。サイクル6 FR-40）
     example: IFRS
   periods:
     type: array
