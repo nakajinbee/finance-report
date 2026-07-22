@@ -1,7 +1,7 @@
 export function Footer() {
   return (
-    <footer className="border-t border-brand-light/40 bg-tint">
-      <div className="mx-auto max-w-5xl px-8 py-4 text-sm text-brand-dark">
+    <footer className="border-t border-gray-200 bg-gray-50">
+      <div className="mx-auto max-w-5xl px-8 py-4 text-sm text-gray-500">
         データ出典：EDINET（金融庁）
       </div>
     </footer>

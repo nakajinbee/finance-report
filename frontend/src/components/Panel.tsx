@@ -9,7 +9,7 @@ type PanelProps = {
 export function Panel({ children, className }: PanelProps) {
   return (
     <div
-      className={`rounded-lg border border-gray-200 bg-white p-6 shadow-sm ${className ?? ""}`}
+      className={`rounded-lg border border-gray-200 bg-gray-50 p-6 shadow-sm ${className ?? ""}`}
     >
       {children}
     </div>

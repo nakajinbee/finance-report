@@ -76,7 +76,7 @@ export function CompanyListPage() {
         value={keyword}
         onChange={(e) => setKeyword(e.target.value)}
         placeholder="企業名・証券コードで検索..."
-        className="w-full rounded border border-gray-300 px-3 py-2"
+        className="w-full rounded border border-gray-300 px-3 py-2 outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
       />
 
       <p className="text-sm text-gray-500">

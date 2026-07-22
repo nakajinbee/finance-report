@@ -63,7 +63,7 @@ export function CashFlowChart({ records }: CashFlowChartProps) {
   return (
     <ResponsiveContainer width="100%" height={320}>
       <BarChart data={chartData} margin={{ left: 8 }}>
-        <CartesianGrid strokeDasharray="3 3" />
+        <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
         <XAxis dataKey="fiscal_year" tickFormatter={toFiscalYearAxisLabel} />
         <YAxis unit="億円" width={80} />
         <Tooltip content={<ChartTooltip records={records} />} />

@@ -109,14 +109,14 @@ export function CompanyFactsPage() {
             value={elementIdFilter}
             onChange={(e) => setElementIdFilter(e.target.value)}
             placeholder="要素IDで絞り込み..."
-            className="min-w-64 rounded border border-gray-300 px-3 py-2"
+            className="min-w-64 rounded border border-gray-300 px-3 py-2 outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
           />
           <label className="flex items-center gap-2">
             期間：
             <select
               value={periodFilter}
               onChange={(e) => setPeriodFilter(e.target.value)}
-              className="rounded border border-gray-300 px-2 py-1"
+              className="rounded border border-gray-300 px-2 py-1 outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
             >
               <option value="">すべて</option>
               {availablePeriods.map((period) => (

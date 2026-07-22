@@ -70,18 +70,21 @@ export function RatioCategorySection({
       ) : !hasAnyValue ? (
         <p className="text-gray-500">表示できるデータがありません</p>
       ) : (
-        <RatioCategoryChart
-          financialRecords={financialRecords}
-          ratioRecords={ratioRecords}
-          entries={entries}
-          activeKeys={activeKeys}
-        />
+        <>
+          <RatioCategoryChart
+            financialRecords={financialRecords}
+            ratioRecords={ratioRecords}
+            entries={entries}
+            activeKeys={activeKeys}
+          />
+          <RatioCategoryTable
+            financialRecords={financialRecords}
+            ratioRecords={ratioRecords}
+            definitions={definitions}
+            activeKeys={activeKeys}
+          />
+        </>
       )}
-      <RatioCategoryTable
-        financialRecords={financialRecords}
-        ratioRecords={ratioRecords}
-        definitions={definitions}
-      />
     </Panel>
   );
 }

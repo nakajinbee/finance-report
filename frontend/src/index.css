@@ -1,13 +1,10 @@
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;700&display=swap");
 @import "tailwindcss";
 
-/* サイクル4の仮の配色（FR-32/33）。本格的な配色決定はサイクル5・6で行う。
-   Canva配色パレット「05. クールブルー」を採用（ユーザー指定、2026-07-22） */
 @theme {
-  --color-brand: #07575b; /* ocean */
-  --color-brand-dark: #003b46; /* deep aqua */
-  --color-brand-light: #66a5ad; /* wave */
-  --color-tint: #c4dfe6; /* seafoam */
+  --color-brand: #0d9488;
+  --color-brand-dark: #0f766e;
+  --color-brand-tint: #f0fdfa;
 }
 
 body {
@@ -18,4 +15,5 @@ body {
     BlinkMacSystemFont,
     "Segoe UI",
     sans-serif;
+  font-variant-numeric: tabular-nums;
 }

@@ -67,13 +67,12 @@ function ChartTooltip({
 
 export function RatioCategoryChart({ financialRecords, ratioRecords, entries, activeKeys }: RatioCategoryChartProps) {
   const chartData = toChartData(financialRecords, ratioRecords, entries);
-  const activeEntries = entries.filter((entry) => activeKeys.has(entry.key));
   const hasDualAxis = entries.some((entry) => entry.axis === "right");
 
   return (
     <ResponsiveContainer width="100%" height={280}>
       <BarChart data={chartData}>
-        <CartesianGrid strokeDasharray="3 3" />
+        <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
         <XAxis dataKey="fiscal_year" tickFormatter={toFiscalYearAxisLabel} />
         {hasDualAxis ? (
           <>
@@ -93,14 +92,15 @@ export function RatioCategoryChart({ financialRecords, ratioRecords, entries, ac
             />
           }
         />
-        <Legend />
-        {activeEntries.map((entry) => (
+        <Legend itemSorter={null} />
+        {entries.map((entry) => (
           <Bar
             key={entry.key}
             dataKey={entry.key}
             name={entry.label}
             fill={entry.color}
             yAxisId={hasDualAxis ? entry.axis : undefined}
+            hide={!activeKeys.has(entry.key)}
           />
         ))}
       </BarChart>

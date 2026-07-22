@@ -161,7 +161,7 @@ export function DownloadPage() {
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="企業名・証券コードで検索..."
-                className="w-full rounded border border-gray-300 px-3 py-2"
+                className="w-full rounded border border-gray-300 px-3 py-2 outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
               />
               {searchResults.length > 0 && (
                 <ul className="divide-y divide-gray-100 rounded border border-gray-200">
@@ -227,7 +227,7 @@ export function DownloadPage() {
               value={fromYear}
               onChange={(e) => setFromYear(Number(e.target.value))}
               disabled={periodType !== "range"}
-              className="w-20 rounded border border-gray-300 px-2 py-1 disabled:bg-gray-100"
+              className="w-20 rounded border border-gray-300 px-2 py-1 outline-none focus:border-brand focus:ring-2 focus:ring-brand/20 disabled:cursor-not-allowed disabled:bg-gray-100"
             />
             年 〜
             <input
@@ -235,7 +235,7 @@ export function DownloadPage() {
               value={toYear}
               onChange={(e) => setToYear(Number(e.target.value))}
               disabled={periodType !== "range"}
-              className="w-20 rounded border border-gray-300 px-2 py-1 disabled:bg-gray-100"
+              className="w-20 rounded border border-gray-300 px-2 py-1 outline-none focus:border-brand focus:ring-2 focus:ring-brand/20 disabled:cursor-not-allowed disabled:bg-gray-100"
             />
             年
           </label>

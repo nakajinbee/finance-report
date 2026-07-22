@@ -1,22 +1,3 @@
-/**
- * サイクル4の仮の配色定義（FR-32）。
- * 本格的なデザインコンセプト・配色は「サイクル5・6」で決定する予定であり、
- * ここでの値はあくまで暫定。今後この値の中身を差し替えるだけで全体に反映されるよう、
- * コンポーネント側は個別に色コードをハードコートせず、ここを参照する。
- */
-export const THEME = {
-  background: "#ffffff",
-  surface: "#f9fafb",
-  border: "#e5e7eb",
-  textPrimary: "#111827",
-  textSecondary: "#6b7280",
-  // Canva配色パレット「05. クールブルー」を採用（ユーザー指定、2026-07-22）
-  accent: "#07575B", // ocean
-  accentDark: "#003B46", // deep aqua
-  accentLight: "#66A5AD", // wave
-  tint: "#C4DFE6", // seafoam
-} as const;
-
 // グラフの系列色（Tableau10ベース）。複数のグラフコンポーネントに散在していた色コードを集約した
 export const CHART_COLORS = {
   series1: "#4E79A7",

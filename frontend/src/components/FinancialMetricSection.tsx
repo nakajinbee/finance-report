@@ -50,13 +50,19 @@ export function FinancialMetricSection({
       ) : !hasAnyValue ? (
         <p className="text-gray-500">表示できるデータがありません</p>
       ) : (
-        <FinancialChart
-          records={records}
-          definitions={definitions}
-          activeMetrics={activeMetrics}
-        />
+        <>
+          <FinancialChart
+            records={records}
+            definitions={definitions}
+            activeMetrics={activeMetrics}
+          />
+          <FinancialMetricTable
+            records={records}
+            definitions={definitions}
+            activeMetrics={activeMetrics}
+          />
+        </>
       )}
-      <FinancialMetricTable records={records} definitions={definitions} />
     </Panel>
   );
 }

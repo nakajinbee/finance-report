@@ -17,7 +17,7 @@ export function RatioToggle({ entries, activeKeys, onToggle }: RatioToggleProps)
             type="button"
             onClick={() => onToggle(entry.key)}
             className={`flex items-center gap-2 rounded border px-3 py-1.5 text-sm ${
-              isActive ? "border-brand bg-sky-50" : "border-gray-200 text-gray-400"
+              isActive ? "border-brand bg-brand-tint text-gray-900" : "border-gray-200 text-gray-400"
             }`}
           >
             <span aria-hidden style={{ color: entry.color }}>

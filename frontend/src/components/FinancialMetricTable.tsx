@@ -1,13 +1,15 @@
 import type { FinancialRecord } from "../api/client";
 import { formatYenForDisplay } from "../lib/formatCurrency";
-import { getMetricValue, type MetricDefinition } from "../lib/metrics";
+import { getMetricValue, type MetricDefinition, type MetricKey } from "../lib/metrics";
 
 type FinancialMetricTableProps = {
   records: FinancialRecord[];
   definitions: MetricDefinition[];
+  activeMetrics: Set<MetricKey>;
 };
 
-export function FinancialMetricTable({ records, definitions }: FinancialMetricTableProps) {
+export function FinancialMetricTable({ records, definitions, activeMetrics }: FinancialMetricTableProps) {
+  const activeDefinitions = definitions.filter((metric) => activeMetrics.has(metric.key));
   return (
     <div className="overflow-x-auto">
       <table className="w-full min-w-max border-collapse text-sm">
@@ -22,7 +24,7 @@ export function FinancialMetricTable({ records, definitions }: FinancialMetricTa
           </tr>
         </thead>
         <tbody>
-          {definitions.map((metric) => (
+          {activeDefinitions.map((metric) => (
             <tr key={metric.key}>
               <td className="border border-gray-200 px-3 py-2 font-medium">{metric.label}</td>
               {records.map((record) => (

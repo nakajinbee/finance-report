@@ -158,7 +158,7 @@ export function CompanyDetailPage() {
           <select
             value={fromYear}
             onChange={(e) => setFromYear(Number(e.target.value))}
-            className="rounded border border-gray-300 px-2 py-1"
+            className="rounded border border-gray-300 px-2 py-1 outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
           >
             {availableYears
               .filter((year) => year <= toYear)
@@ -172,7 +172,7 @@ export function CompanyDetailPage() {
           <select
             value={toYear}
             onChange={(e) => setToYear(Number(e.target.value))}
-            className="rounded border border-gray-300 px-2 py-1"
+            className="rounded border border-gray-300 px-2 py-1 outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
           >
             {availableYears
               .filter((year) => year >= fromYear)

@@ -59,18 +59,17 @@ function ChartTooltip({
 
 export function FinancialChart({ records, definitions, activeMetrics }: FinancialChartProps) {
   const chartData = toChartData(records, definitions);
-  const activeMetricDefinitions = definitions.filter((metric) => activeMetrics.has(metric.key));
 
   return (
     <ResponsiveContainer width="100%" height={320}>
       <BarChart data={chartData} margin={{ left: 8 }}>
-        <CartesianGrid strokeDasharray="3 3" />
+        <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
         <XAxis dataKey="fiscal_year" tickFormatter={toFiscalYearAxisLabel} />
         <YAxis unit="億円" width={80} />
         <Tooltip content={<ChartTooltip records={records} definitions={definitions} activeMetrics={activeMetrics} />} />
-        <Legend />
-        {activeMetricDefinitions.map((metric) => (
-          <Bar key={metric.key} dataKey={metric.key} name={metric.label} fill={metric.color} />
+        <Legend itemSorter={null} />
+        {definitions.map((metric) => (
+          <Bar key={metric.key} dataKey={metric.key} name={metric.label} fill={metric.color} hide={!activeMetrics.has(metric.key)} />
         ))}
       </BarChart>
     </ResponsiveContainer>
