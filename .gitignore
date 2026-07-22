@@ -22,3 +22,6 @@ docs/external/edinet/tmpdata/
 
 # OS
 .DS_Store
+
+# Claude Code ローカル設定（ツール実行の許可ログ。実行のたびに変化するため追跡しない）
+.claude/settings.json
