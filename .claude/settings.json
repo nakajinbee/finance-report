@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Edit(/.claude/skills/design-apply/**)",
+      "Edit(/.claude/skills/todo-tracker/**)",
+      "Edit(/.claude/skills/req-design-traceability/**)"
+    ]
+  }
+}
