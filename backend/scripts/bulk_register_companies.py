@@ -6,22 +6,10 @@
 import logging
 
 from database import Company, SessionLocal
-from edinet_client import list_all_filers
+from edinet_client import list_all_filers, to_company_code
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
-
-
-def _to_company_code(sec_code: str) -> str:
-    """EDINETの証券コード（5桁、末尾0）を、companiesテーブルの4桁codeに変換する。
-
-    既存の`memo/リクルートデータ取得メモ.md`・`docs/design/table/TBL-001_companies.md`の
-    変換ルール（末尾の0を除去）と同じ。サイクル6設計時に実データ3,829件全件で
-    末尾が'0'であることを確認済み（想定外のケースは想定していない）。
-    """
-    if not sec_code.endswith("0"):
-        raise ValueError(f"末尾が0でない証券コード: {sec_code}")
-    return sec_code[:-1]
 
 
 def main() -> None:
@@ -36,7 +24,7 @@ def main() -> None:
                 skipped_no_sec_code += 1
                 continue
             try:
-                code = _to_company_code(filer.sec_code)
+                code = to_company_code(filer.sec_code)
                 company = session.get(Company, code)
                 if company is None:
                     company = Company(code=code)

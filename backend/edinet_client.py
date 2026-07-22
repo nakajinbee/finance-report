@@ -45,6 +45,7 @@ REPORT_FILING_DEADLINE_DAYS = {
 }
 
 _last_request_time: float = 0.0
+_request_count: int = 0
 
 
 class EdinetApiError(Exception):
@@ -70,6 +71,18 @@ def _wait_for_rate_limit() -> None:
         time.sleep(MIN_REQUEST_INTERVAL_SECONDS - elapsed)
 
 
+def get_request_count() -> int:
+    """直近のreset_request_count()以降に行われたEDINETへのHTTPリクエスト回数を返す
+    （サイクル7 FR-42、バッチ取得の技術検証用）"""
+    return _request_count
+
+
+def reset_request_count() -> None:
+    """リクエストカウンタを0に戻す（企業ごとに区切って計測するため）"""
+    global _request_count
+    _request_count = 0
+
+
 def _get(path: str, params: dict) -> requests.Response:
     """HTTPレベルの通信のみを行う。EDINET APIはエラー時もHTTP 200を返す仕様のため、
     ステータスコードでの成否判定はここでは行わない（429のみ例外）。
@@ -79,6 +92,8 @@ def _get(path: str, params: dict) -> requests.Response:
     """
     _wait_for_rate_limit()
     global _last_request_time
+    global _request_count
+    _request_count += 1
     response = requests.get(
         f"{BASE_URL}{path}",
         params={**params, "Subscription-Key": EDINET_API_KEY},
@@ -284,6 +299,15 @@ def _load_filer_info_cache() -> list[FilerInfo]:
 def list_all_filers() -> list[FilerInfo]:
     """EDINETコードリストの全提出者を返す（サイクル6 FR-39、一括登録バッチ用）"""
     return _load_filer_info_cache()
+
+
+def to_company_code(sec_code: str) -> str:
+    """EDINETの証券コード（5桁、末尾0）を、companiesテーブルの4桁codeに変換する
+    （サイクル6 FR-39で追加、サイクル7 FR-43でも共用するためここに集約）。
+    """
+    if not sec_code.endswith("0"):
+        raise ValueError(f"末尾が0でない証券コード: {sec_code}")
+    return sec_code[:-1]
 
 
 def fetch_filer_info(edinet_code: str) -> FilerInfo:
