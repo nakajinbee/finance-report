@@ -23,6 +23,11 @@ REQUEST_TIMEOUT_SECONDS = 15
 # EDINET APIの429(Too Many Requests)を避けるための最小リクエスト間隔
 # memo/リクルートデータ取得メモ.md の実機検証で採用した間隔と同じ
 MIN_REQUEST_INTERVAL_SECONDS = 0.6
+# 通信の一時的な瞬断（ConnectTimeout等）に対するリトライ回数・待機秒数
+# （サイクル9のバックフィル実行中に実際にタイムアウトが発生し追加。長時間のバッチ処理が
+# 通信の瞬断1回で全体停止しないようにする）
+TRANSIENT_ERROR_MAX_RETRIES = 3
+TRANSIENT_ERROR_RETRY_WAIT_SECONDS = 5
 
 # 書類種別コード：有価証券報告書（訂正版の"130"は含まない）
 DOC_TYPE_CODE_ANNUAL_REPORT = "120"
@@ -95,11 +100,19 @@ def _get(path: str, params: dict) -> requests.Response:
     global _last_request_time
     global _request_count
     _request_count += 1
-    response = requests.get(
-        f"{BASE_URL}{path}",
-        params={**params, "Subscription-Key": EDINET_API_KEY},
-        timeout=REQUEST_TIMEOUT_SECONDS,
-    )
+
+    for attempt in range(1, TRANSIENT_ERROR_MAX_RETRIES + 1):
+        try:
+            response = requests.get(
+                f"{BASE_URL}{path}",
+                params={**params, "Subscription-Key": EDINET_API_KEY},
+                timeout=REQUEST_TIMEOUT_SECONDS,
+            )
+            break
+        except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
+            if attempt == TRANSIENT_ERROR_MAX_RETRIES:
+                raise
+            time.sleep(TRANSIENT_ERROR_RETRY_WAIT_SECONDS)
     _last_request_time = time.monotonic()
 
     if response.status_code == 429:

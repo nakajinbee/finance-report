@@ -19,20 +19,21 @@ docs/
 ├── requirements/                         ← 要件定義（cycleN_requirements.md・レビュー結果）
 │   ├── self_review_rule.md
 │   ├── cycleX_backlog.md                 ← 「やる」と決まったが未着手の事項（一元管理）
-│   └── cycle1〜8_requirements.md / _review.md
+│   └── cycle1〜9_requirements.md / _review.md
 │
 ├── design/                               ← 設計
 │   ├── self_review_rule.md
 │   ├── design_guideline.md               ← 本番デザインコンセプト（配色・タイポグラフィ等、常に最終断面のみ）
-│   ├── cycle1,3,4,5,6,7,8_design.md / _review.md
+│   ├── cycle1,3,4,5,6,7,8,9_design.md / _review.md
 │   ├── screen/                           ← 画面定義書（詳細：screen/screen_list.md）
 │   ├── api/                              ← API設計書（詳細：api/api_list.md、openapi.yaml）
-│   └── table/                            ← テーブル定義書（詳細：table/table_list.md、er_diagram.md）
+│   ├── table/                            ← テーブル定義書（詳細：table/table_list.md、er_diagram.md）
+│   └── batch/                            ← バッチ定義書（詳細：batch/batch_list.md。新規バッチ追加時は必ずセットで更新）
 │
 ├── development/                          ← 開発
 │   ├── self_review_rule.md
-│   ├── cycle2〜8_development_review.md
-│   ├── cycle7_batch_timing_estimate.md   ← 全社展開時の所要時間・データ量見積もり＋サイクル8の再検証結果（IDEA-01フェーズ2）
+│   ├── cycle2〜9_development_review.md
+│   ├── cycle7_batch_timing_estimate.md   ← 全社展開時の所要時間・データ量見積もり＋サイクル8の再検証結果（旧方式、IDEA-01フェーズ2）
 │   ├── backend_implementation_policy.md
 │   ├── frontend_implementation_policy.md
 │   ├── date_format_policy.md             ← fiscal_year等の日付表記ルール（重要：動的再生成禁止）
@@ -52,6 +53,9 @@ docs/
 `.claude/skills/`（プロジェクトルート）には、進め方を型化したSkillsがある：
 `cycle-workflow`・`design-apply`・`todo-tracker`・`req-design-traceability`。
 
+大きな負荷がかかる操作（外部APIへの大量アクセス等）・データの更新削除・
+アーキテクチャ変更は、実行前にユーザーへ明示的に確認する（cycle-workflow参照）。
+
 ---
 
 ## 現在のフェーズ
@@ -66,18 +70,17 @@ docs/
 | サイクル6 | 全上場企業マスタの一括登録（[IDEA-01](ideas/IDEA-01_db_batch_ingestion.md)フェーズ1） | 完了 |
 | サイクル7 | バッチ取得の技術検証（[IDEA-01](ideas/IDEA-01_db_batch_ingestion.md)フェーズ2） | 完了 |
 | サイクル8 | 書類一覧APIの日付単位キャッシュ導入・再検証（[IDEA-01](ideas/IDEA-01_db_batch_ingestion.md)フェーズ3準備） | 完了 |
+| サイクル9 | 書類一覧・書類本体の取り込み処理を日付ポーリング方式で実装（[IDEA-01](ideas/IDEA-01_db_batch_ingestion.md)フェーズ3・4） | 完了 |
 | 次サイクル | 未定。[ideas/README.md](ideas/README.md)・[requirements/cycleX_backlog.md](requirements/cycleX_backlog.md)から検討 | 企画待ち |
 
 現時点で残っている大きな論点：
 - アプリのコンセプト・想定利用者が未決定（[ideas/IDEA-10](ideas/IDEA-10_report_purpose_redesign.md)・[IDEA-13](ideas/IDEA-13_use_case_design.md)がこれ待ち）
-- [IDEA-01](ideas/IDEA-01_db_batch_ingestion.md)のフェーズ3（財務データ全社一括取得）は、
-  サイクル8で「企業ごとに検索する現行方式は、キャッシュで改善しても実務上許容できる
-  水準（約4.7日）に達しない」と判明。EDINETの書類一覧APIが本来「日付を指定してその日の
-  全提出書類を取得する」設計であることを踏まえ、「日付を毎日ポーリングして取り込む」
-  方式へのアーキテクチャ変更を次サイクルの要件定義から行う
-  （[cycle7_batch_timing_estimate.md](development/cycle7_batch_timing_estimate.md)の
-  「サイクル8：キャッシュ導入後の再検証結果」参照）
-- IDEA-01のフェーズ4〜6（定期更新バッチ・フロントのDB参照切り替え・DB移行判断）も未着手
+- サイクル9でBATCH-003（書類一覧バックフィル、過去10年分・41,567件を実行済み）・
+  BATCH-004（書類本体取り込み、30件サンプルで動作確認済み）を実装した。
+  BATCH-004の全社・全件規模での本実行、日次実行の自動化（IDEA-01フェーズ4の完成）は
+  次サイクル以降（詳細：[batch/batch_list.md](design/batch/batch_list.md)）
+- IDEA-01のフェーズ5（フロントのDB参照切り替え）は前提確認の結果、画面は既にDBのみ
+  参照する実装だったことが判明したため実質完了。フェーズ6（DB移行判断）は未着手
 
 ---
 
@@ -89,6 +92,7 @@ docs/
 | テーブル一覧 | [design/table/table_list.md](design/table/table_list.md) |
 | テーブルの関係（ER図） | [design/table/er_diagram.md](design/table/er_diagram.md) |
 | APIエンドポイント一覧 | [design/api/api_list.md](design/api/api_list.md) |
+| バッチ処理一覧 | [design/batch/batch_list.md](design/batch/batch_list.md) |
 | デザインのルール（色・フォント・状態表現等） | [design/design_guideline.md](design/design_guideline.md) |
 | まだ検討中のアイデア | [ideas/README.md](ideas/README.md) |
 | 「やる」と決まったが未着手の事項 | [requirements/cycleX_backlog.md](requirements/cycleX_backlog.md) |
