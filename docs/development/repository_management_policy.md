@@ -54,7 +54,7 @@
 | 対象 | 方針 |
 |---|---|
 | バックエンド `requirements.txt` | `pip freeze` で**完全固定**（`==`指定）。`pip install`のたびに環境が変わることを防ぐ。メジャーバージョンを上げる時だけ手動で更新する |
-| フロントエンド `package.json` / `package-lock.json` | `package.json`は`^`（マイナー範囲）で管理し、`package-lock.json`を**必ずコミット**して実際のインストールバージョンを固定する（npm標準の運用） |
+| フロントエンド `package.json` / `pnpm-lock.yaml` | `package.json`は`^`（マイナー範囲）で管理し、`pnpm-lock.yaml`を**必ずコミット**して実際のインストールバージョンを固定する（[frontend_implementation_policy.md](frontend_implementation_policy.md)のとおりpnpmを採用しているため、npmの`package-lock.json`は生成しない） |
 | Python本体 | `python3.10`（Homebrew）に固定。`.python-version`等のバージョン指定ファイルは現時点では作らない（個人開発でPython切り替えの需要が低いため） |
 
 ---

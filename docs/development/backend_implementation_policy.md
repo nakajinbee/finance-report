@@ -37,16 +37,17 @@
 backend/
 ├── main.py                # FastAPIインスタンス生成・ルーター登録のみ（薄く保つ）
 ├── routers/
-│   ├── edinet.py            # API-EDN-001/002（openapi.yaml paths/edinet/ に対応）
-│   └── companies.py         # API-COM-001/002（openapi.yaml paths/com/ に対応）
+│   ├── edinet.py            # API-EDN-001〜003（openapi.yaml paths/edinet/ に対応）
+│   └── companies.py         # API-COM-001〜005（openapi.yaml paths/com/ に対応）
 ├── schemas.py               # Pydanticモデル（openapi.yaml components/schemas/ をそのまま型として定義）
 ├── edinet_client.py          # EDINET外部APIとの通信専用（memo/リクルートデータ取得メモ.md の①②API）
-├── xbrl_parser.py            # CSVから要素IDを抜き出すパーサー
-├── database.py                # SQLAlchemyエンジン・セッション・ORMモデル（TBL-001/002）
+├── xbrl_parser.py            # CSVから要素ID・値を抜き出す汎用パーサー（TBL-003 facts向け、サイクル2で拡張）
+├── metric_mappings.py         # 会計基準（J-GAAP/IFRS/US GAAP）ごとの要素IDマッピング・財務分析指標の計算式（サイクル3で追加）
+├── database.py                # SQLAlchemyエンジン・セッション・ORMモデル（TBL-001 companies, TBL-003 facts。TBL-002 financialsはサイクル2で廃止済み）
 ├── alembic/                   # マイグレーション（alembic init で生成）
 ├── alembic.ini
 ├── requirements.txt
-├── financials.db               # SQLite実体（.gitignore対象）
+├── financials.db               # SQLite実体（.gitignore対象。ファイル名は初期のまま、中身はTBL-003 facts方式）
 └── .env                        # 秘密情報（.gitignore対象）
 ```
 

@@ -18,20 +18,39 @@
 
 ---
 
+## ジャンル分けのルール
+
+概念の枠組みが違うものを一緒くたに考えると議論が迷走するため、アイデアは必ず次の4ジャンルの
+いずれかに分類する。1つのアイデアが複数の側面を持つ場合は、**「今このアイデアを前に進めるために
+どの種類の判断が必要か」**を基準に主ジャンルを1つ選ぶ（迷ったらメモ欄に補足する）。
+
+| ジャンル | 判断の性質 | 具体例 |
+|---|---|---|
+| **ビジネス面** | 収益化・課金モデル・事業としての価値をどう判断するか | 生成AI連携の課金設計（IDEA-11） |
+| **プロダクト/UX面** | 何を作るか・誰にどう使われたいか・体験設計をどう判断するか | コンセプト決定後のレポート再設計（IDEA-10）、ユースケース設計（IDEA-13）、新機能の要否判断（IDEA-05, 06） |
+| **管理面** | プロジェクトの進め方・体制をどう判断するか | Jira連携（IDEA-08） |
+| **エンジニアリング面** | どう実装するか・技術的にどう作るか | DB一括化（IDEA-01）、一覧機能の実装（IDEA-02〜04）、テスト整備（IDEA-09） |
+
+「ビジネス面」と「プロダクト/UX面」を混同しないこと（儲け方の話と、作るものの話は別軸）。
+「エンジニアリング面」は、既にやること・作るものが決まっていて技術的な実現方法だけが
+論点になっているアイデアに使う（何を作るか自体がまだ判断材料な場合はプロダクト/UX面）。
+
+---
+
 ## 一覧
 
-| ID | タイトル | 優先度 | いつ反映するか | ファイル |
-|---|---|---|---|---|
-| IDEA-01 | データ取得方式の刷新（都度参照→一括DB化） | 未定 | 未定 | [IDEA-01_db_batch_ingestion.md](IDEA-01_db_batch_ingestion.md) |
-| IDEA-02 | 企業一覧：検索結果のみ表示 | 未定 | 未定 | [IDEA-02_company_list_search_only.md](IDEA-02_company_list_search_only.md) |
-| IDEA-03 | 企業一覧：ソート機能 | 未定 | 未定 | [IDEA-03_company_list_sort.md](IDEA-03_company_list_sort.md) |
-| IDEA-04 | 企業一覧：業界絞り込み | 未定 | 未定 | [IDEA-04_company_list_sector_filter.md](IDEA-04_company_list_sector_filter.md) |
-| IDEA-05 | 企業比較ページ | 低 | 未定 | [IDEA-05_company_comparison_page.md](IDEA-05_company_comparison_page.md) |
-| IDEA-06 | 業界ごとのシェア地図 | 低 | 未定 | [IDEA-06_sector_share_map.md](IDEA-06_sector_share_map.md) |
-| IDEA-07 | ユーザー管理・ログイン機能 | 未定 | 未定 | [IDEA-07_user_management_login.md](IDEA-07_user_management_login.md) |
-| IDEA-08 | Jira（＋Confluence検討）でのプロジェクト管理 | 未定 | 未定 | [IDEA-08_jira_project_management.md](IDEA-08_jira_project_management.md) |
-| IDEA-09 | テストコードの整備 | 未定 | 未定 | [IDEA-09_test_coverage.md](IDEA-09_test_coverage.md) |
-| IDEA-10 | レポート表示の強化（コンセプト起点の再設計） | 未定 | コンセプト決定後 | [IDEA-10_report_purpose_redesign.md](IDEA-10_report_purpose_redesign.md) |
-| IDEA-11 | 生成AIとの連携（レポートQA機能） | 未定 | IDEA-07の後 | [IDEA-11_ai_report_qa.md](IDEA-11_ai_report_qa.md) |
-| IDEA-12 | 株価確認機能 | 未定 | 未定 | [IDEA-12_stock_price_check.md](IDEA-12_stock_price_check.md) |
-| IDEA-13 | ユースケース設計 | 未定 | コンセプト決定後 | [IDEA-13_use_case_design.md](IDEA-13_use_case_design.md) |
+| ID | タイトル | ジャンル | 優先度 | いつ反映するか | ファイル |
+|---|---|---|---|---|---|
+| IDEA-01 | データ取得方式の刷新（都度参照→一括DB化） | エンジニアリング | 未定 | 未定 | [IDEA-01_db_batch_ingestion.md](IDEA-01_db_batch_ingestion.md) |
+| IDEA-02 | 企業一覧：検索結果のみ表示 | エンジニアリング | 未定 | 未定 | [IDEA-02_company_list_search_only.md](IDEA-02_company_list_search_only.md) |
+| IDEA-03 | 企業一覧：ソート機能 | エンジニアリング | 未定 | 未定 | [IDEA-03_company_list_sort.md](IDEA-03_company_list_sort.md) |
+| IDEA-04 | 企業一覧：業界絞り込み | エンジニアリング | 未定 | 未定 | [IDEA-04_company_list_sector_filter.md](IDEA-04_company_list_sector_filter.md) |
+| IDEA-05 | 企業比較ページ | プロダクト/UX | 低 | 未定 | [IDEA-05_company_comparison_page.md](IDEA-05_company_comparison_page.md) |
+| IDEA-06 | 業界ごとのシェア地図 | プロダクト/UX | 低 | 未定 | [IDEA-06_sector_share_map.md](IDEA-06_sector_share_map.md) |
+| IDEA-07 | ユーザー管理・ログイン機能 | エンジニアリング | 未定 | 未定 | [IDEA-07_user_management_login.md](IDEA-07_user_management_login.md) |
+| IDEA-08 | Jira（＋Confluence検討）でのプロジェクト管理 | 管理 | 未定 | 未定 | [IDEA-08_jira_project_management.md](IDEA-08_jira_project_management.md) |
+| IDEA-09 | テストコードの整備 | エンジニアリング | 未定 | 未定 | [IDEA-09_test_coverage.md](IDEA-09_test_coverage.md) |
+| IDEA-10 | レポート表示の強化（コンセプト起点の再設計） | プロダクト/UX | 未定 | コンセプト決定後 | [IDEA-10_report_purpose_redesign.md](IDEA-10_report_purpose_redesign.md) |
+| IDEA-11 | 生成AIとの連携（レポートQA機能） | ビジネス | 未定 | IDEA-07の後 | [IDEA-11_ai_report_qa.md](IDEA-11_ai_report_qa.md) |
+| IDEA-12 | 株価確認機能 | エンジニアリング | 未定 | 未定 | [IDEA-12_stock_price_check.md](IDEA-12_stock_price_check.md) |
+| IDEA-13 | ユースケース設計 | プロダクト/UX | 未定 | コンセプト決定後 | [IDEA-13_use_case_design.md](IDEA-13_use_case_design.md) |

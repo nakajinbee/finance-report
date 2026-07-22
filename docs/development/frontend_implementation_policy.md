@@ -19,11 +19,11 @@
 
 | レイヤー | 採用技術 | 備考 |
 |---|---|---|
-| UIライブラリ | React | 設計書どおり |
-| ルーティング | React Router v6 | `/download`・`/companies`・`/companies/:code`（SCR-001〜003） |
-| グラフ描画 | Recharts（`BarChart`） | SCR-003の指標グラフに使用 |
-| スタイリング | **Tailwind CSS** | ユーティリティクラスで高速にスタイリング。指標カラー（`#4E79A7`等、SCR-003参照）はTailwindのカスタムカラーとして`tailwind.config`に定義する |
-| HTTP通信 | 標準`fetch` | 呼び出すAPIは4本のみ（`docs/design/api/api_list.md`参照）。axios等の追加ライブラリは導入しない |
+| UIライブラリ | React 19 | 設計書どおり |
+| ルーティング | React Router v7 | `/download`・`/companies`・`/companies/:code`・`/companies/:code/facts`（SCR-001〜004）。共通の`Layout`（`Header`/`Footer`）が`Outlet`で各ページを描画する（サイクル4で導入） |
+| グラフ描画 | Recharts v3（`BarChart`） | SCR-003・SCR-004の各グラフに使用 |
+| スタイリング | **Tailwind CSS v4** | `@tailwindcss/vite`プラグイン方式。ブランドカラー（`--color-brand`等）は`index.css`の`@theme`にCSS変数として定義し、Tailwindのユーティリティクラス（`bg-brand`等）から参照する。グラフの系列色（`CHART_COLORS`等）はTailwindではなく`lib/theme.ts`のTypeScript定数で管理する（Rechartsに直接渡す値のため）。詳細は[design_guideline.md](../design/design_guideline.md) |
+| HTTP通信 | 標準`fetch` | 呼び出すAPIは8本（EDN系3本＋COM系5本、`docs/design/api/api_list.md`参照）。axios等の追加ライブラリは導入しない |
 | Lint | ESLint（Viteテンプレート標準構成） | 導入する |
 | Format | Prettier | ESLintと併用し、フォーマットルールの衝突を避けるため`eslint-config-prettier`を併せて入れる |
 | テスト | 現時点では未導入 | バックエンド同様、画面数・ロジックが増えた段階で導入を検討する |
@@ -35,23 +35,39 @@
 ```
 frontend/
 ├── src/
-│   ├── App.tsx                          # Router設定
+│   ├── main.tsx                         # エントリポイント
+│   ├── App.tsx                          # Router設定（Layoutでラップ）
 │   ├── pages/
 │   │   ├── DownloadPage.tsx             # SCR-001
 │   │   ├── CompanyListPage.tsx          # SCR-002
-│   │   └── CompanyDetailPage.tsx        # SCR-003
+│   │   ├── CompanyDetailPage.tsx        # SCR-003
+│   │   └── CompanyFactsPage.tsx         # SCR-004（サイクル2で追加）
 │   ├── components/
-│   │   ├── FinancialChart.tsx           # グラフ（SCR-003-06〜13）
-│   │   ├── MetricSelector.tsx           # 指標切り替え（SCR-003-05）
+│   │   ├── layout/
+│   │   │   ├── Layout.tsx               # Header/Footer＋Outlet（サイクル4）
+│   │   │   ├── Header.tsx
+│   │   │   └── Footer.tsx
+│   │   ├── Panel.tsx                    # 共通カードコンポーネント（サイクル4）
+│   │   ├── Button.tsx                   # 共通ボタンコンポーネント（サイクル4）
+│   │   ├── FinancialChart.tsx / FinancialMetricTable.tsx / FinancialMetricSection.tsx  # B/S・P/L
+│   │   ├── RatioCategoryChart.tsx / RatioCategoryTable.tsx / RatioCategorySection.tsx / RatioToggle.tsx  # 財務分析指標（サイクル3）
+│   │   ├── CashFlowChart.tsx / CashFlowTable.tsx
+│   │   ├── MetricSelector.tsx           # B/S・P/L指標の切り替え
 │   │   └── ErrorMessage.tsx             # エラー表示
+│   ├── lib/
+│   │   ├── theme.ts                     # グラフ系列色（CHART_COLORS等）の定数
+│   │   ├── metrics.ts / ratioCategories.ts  # 指標定義（キー・ラベル・色・計算元コンポーネント）
+│   │   ├── formatCurrency.ts / formatRatio.ts / formatFiscalYear.ts  # 表示用フォーマッタ
+│   │   └── kana.ts                      # 企業名検索の読み仮名正規化
 │   ├── api/
 │   │   └── client.ts                    # fetchラッパー。api_list.mdのAPI-EDN-*/API-COM-*に対応する関数を定義
-│   └── index.css                        # Tailwindのエントリポイント（@import "tailwindcss";）
+│   └── index.css                        # Tailwindのエントリポイント＋@theme（ブランドトークン）＋フォント設定
 ├── eslint.config.js
 ├── .prettierrc
 ├── vite.config.ts                        # @tailwindcss/vite プラグインを含む
 ├── tsconfig.json
-└── package.json
+├── package.json
+└── pnpm-lock.yaml
 ```
 
 Tailwind CSS 4系は`@tailwindcss/vite`プラグイン方式のため、`tailwind.config.js`・
@@ -63,7 +79,7 @@ Tailwind CSS 4系は`@tailwindcss/vite`プラグイン方式のため、`tailwin
 
 1. **Vite雛形作成**（`npm create vite@latest frontend -- --template react-ts`）＋ Tailwind/ESLint/Prettierセットアップ
 2. **`api/client.ts`** — `docs/design/screen/items/SCR-*_items.md`で確定した型（`Company`/`CompanyFinancials`/`DownloadStatus`等）をTypeScript型として定義し、fetch関数を実装。バックエンドの`openapi.yaml`のレスポンス形と1対1になるようにする
-3. **`pages/`** — 画面定義書（SCR-001〜003）と画面項目定義書（`items/SCR-*_items.md`）どおりに実装。項目IDごとの参照元APIレスポンスフィールドをそのまま使う
+3. **`pages/`** — 画面定義書（SCR-001〜004）と画面項目定義書（`items/SCR-*_items.md`）どおりに実装。項目IDごとの参照元APIレスポンスフィールドをそのまま使う
 4. **`components/`** — グラフ・指標切り替え等の共通コンポーネントを切り出す
 
 バックエンド（`docs/development/backend_implementation_policy.md`）のAPI層が動く前に、
