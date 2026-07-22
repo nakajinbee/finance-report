@@ -32,8 +32,9 @@ docs/
 │
 ├── development/                          ← 開発
 │   ├── self_review_rule.md
-│   ├── cycle2〜9_development_review.md
+│   ├── cycle2〜10_development_review.md
 │   ├── cycle7_batch_timing_estimate.md   ← 全社展開時の所要時間・データ量見積もり＋サイクル8の再検証結果（旧方式、IDEA-01フェーズ2）
+│   ├── cycle10_db_migration_decision.md  ← SQLite継続／他DB移行の判断（IDEA-01フェーズ6）
 │   ├── backend_implementation_policy.md
 │   ├── frontend_implementation_policy.md
 │   ├── date_format_policy.md             ← fiscal_year等の日付表記ルール（重要：動的再生成禁止）
@@ -71,6 +72,7 @@ docs/
 | サイクル7 | バッチ取得の技術検証（[IDEA-01](ideas/IDEA-01_db_batch_ingestion.md)フェーズ2） | 完了 |
 | サイクル8 | 書類一覧APIの日付単位キャッシュ導入・再検証（[IDEA-01](ideas/IDEA-01_db_batch_ingestion.md)フェーズ3準備） | 完了 |
 | サイクル9 | 書類一覧・書類本体の取り込み処理を日付ポーリング方式で実装（[IDEA-01](ideas/IDEA-01_db_batch_ingestion.md)フェーズ3・4） | 完了 |
+| サイクル10 | データ量・並行アクセスパターンをもとにDB移行判断（[IDEA-01](ideas/IDEA-01_db_batch_ingestion.md)フェーズ6） | 完了 |
 | 次サイクル | 未定。[ideas/README.md](ideas/README.md)・[requirements/cycleX_backlog.md](requirements/cycleX_backlog.md)から検討 | 企画待ち |
 
 現時点で残っている大きな論点：
@@ -78,9 +80,11 @@ docs/
 - サイクル9でBATCH-003（書類一覧バックフィル、過去10年分・41,567件を実行済み）・
   BATCH-004（書類本体取り込み、30件サンプルで動作確認済み）を実装した。
   BATCH-004の全社・全件規模での本実行、日次実行の自動化（IDEA-01フェーズ4の完成）は
-  次サイクル以降（詳細：[batch/batch_list.md](design/batch/batch_list.md)）
-- IDEA-01のフェーズ5（フロントのDB参照切り替え）は前提確認の結果、画面は既にDBのみ
-  参照する実装だったことが判明したため実質完了。フェーズ6（DB移行判断）は未着手
+  次サイクル以降（詳細：[batch/batch_list.md](design/batch/batch_list.md)、
+  backlog：[requirements/cycleX_backlog.md](requirements/cycleX_backlog.md)）
+- IDEA-01は全6フェーズが完了した（フェーズ6の判断：SQLite継続。詳細：
+  [development/cycle10_db_migration_decision.md](development/cycle10_db_migration_decision.md)）。
+  残るのはフェーズ3・4の「全社規模の本実行・自動化」のみ（上記backlog参照）
 
 ---
 
