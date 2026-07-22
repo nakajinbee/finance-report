@@ -18,8 +18,18 @@ SAMPLE_SECTOR_LIMIT = 20
 
 
 def select_sample_companies(session) -> list[Company]:
-    """業種ごとに1社（code昇順で先頭）を、業種名の昇順でSAMPLE_SECTOR_LIMIT件選ぶ"""
-    companies = session.query(Company).order_by(Company.sector, Company.code).all()
+    """業種ごとに1社（code昇順で先頭）を、業種名の昇順でSAMPLE_SECTOR_LIMIT件選ぶ。
+
+    accounting_standardが未設定（＝財務データ未取得）の企業に限定する。既に取得済みの
+    企業を選ぶと、FR-11のスキップ判定により0秒・0リクエストという無意味な結果になり、
+    キャッシュの効果を測定できないため（サイクル8 FR-46）。
+    """
+    companies = (
+        session.query(Company)
+        .filter(Company.accounting_standard.is_(None))
+        .order_by(Company.sector, Company.code)
+        .all()
+    )
     seen_sectors: set[str | None] = set()
     sample: list[Company] = []
     for company in companies:

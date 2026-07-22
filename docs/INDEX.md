@@ -19,20 +19,20 @@ docs/
 ├── requirements/                         ← 要件定義（cycleN_requirements.md・レビュー結果）
 │   ├── self_review_rule.md
 │   ├── cycleX_backlog.md                 ← 「やる」と決まったが未着手の事項（一元管理）
-│   └── cycle1〜7_requirements.md / _review.md
+│   └── cycle1〜8_requirements.md / _review.md
 │
 ├── design/                               ← 設計
 │   ├── self_review_rule.md
 │   ├── design_guideline.md               ← 本番デザインコンセプト（配色・タイポグラフィ等、常に最終断面のみ）
-│   ├── cycle1,3,4,5,6,7_design.md / _review.md
+│   ├── cycle1,3,4,5,6,7,8_design.md / _review.md
 │   ├── screen/                           ← 画面定義書（詳細：screen/screen_list.md）
 │   ├── api/                              ← API設計書（詳細：api/api_list.md、openapi.yaml）
-│   └── table/                            ← テーブル定義書（詳細：table/table_list.md）
+│   └── table/                            ← テーブル定義書（詳細：table/table_list.md、er_diagram.md）
 │
 ├── development/                          ← 開発
 │   ├── self_review_rule.md
-│   ├── cycle2〜7_development_review.md
-│   ├── cycle7_batch_timing_estimate.md   ← 全社展開時の所要時間・データ量見積もり（IDEA-01フェーズ2）
+│   ├── cycle2〜8_development_review.md
+│   ├── cycle7_batch_timing_estimate.md   ← 全社展開時の所要時間・データ量見積もり＋サイクル8の再検証結果（IDEA-01フェーズ2）
 │   ├── backend_implementation_policy.md
 │   ├── frontend_implementation_policy.md
 │   ├── date_format_policy.md             ← fiscal_year等の日付表記ルール（重要：動的再生成禁止）
@@ -65,13 +65,18 @@ docs/
 | サイクル5 | 本番デザインコンセプト策定・実装（design_guideline.md） | 完了 |
 | サイクル6 | 全上場企業マスタの一括登録（[IDEA-01](ideas/IDEA-01_db_batch_ingestion.md)フェーズ1） | 完了 |
 | サイクル7 | バッチ取得の技術検証（[IDEA-01](ideas/IDEA-01_db_batch_ingestion.md)フェーズ2） | 完了 |
+| サイクル8 | 書類一覧APIの日付単位キャッシュ導入・再検証（[IDEA-01](ideas/IDEA-01_db_batch_ingestion.md)フェーズ3準備） | 完了 |
 | 次サイクル | 未定。[ideas/README.md](ideas/README.md)・[requirements/cycleX_backlog.md](requirements/cycleX_backlog.md)から検討 | 企画待ち |
 
 現時点で残っている大きな論点：
 - アプリのコンセプト・想定利用者が未決定（[ideas/IDEA-10](ideas/IDEA-10_report_purpose_redesign.md)・[IDEA-13](ideas/IDEA-13_use_case_design.md)がこれ待ち）
 - [IDEA-01](ideas/IDEA-01_db_batch_ingestion.md)のフェーズ3（財務データ全社一括取得）は、
-  サイクル7の実測で「現行実装のままでは約8〜10日かかり非現実的」と判明したため、
-  要件定義からの見直しが必要（[cycle7_batch_timing_estimate.md](development/cycle7_batch_timing_estimate.md)参照）
+  サイクル8で「企業ごとに検索する現行方式は、キャッシュで改善しても実務上許容できる
+  水準（約4.7日）に達しない」と判明。EDINETの書類一覧APIが本来「日付を指定してその日の
+  全提出書類を取得する」設計であることを踏まえ、「日付を毎日ポーリングして取り込む」
+  方式へのアーキテクチャ変更を次サイクルの要件定義から行う
+  （[cycle7_batch_timing_estimate.md](development/cycle7_batch_timing_estimate.md)の
+  「サイクル8：キャッシュ導入後の再検証結果」参照）
 - IDEA-01のフェーズ4〜6（定期更新バッチ・フロントのDB参照切り替え・DB移行判断）も未着手
 
 ---
@@ -82,6 +87,7 @@ docs/
 |---|---|
 | 画面一覧 | [design/screen/screen_list.md](design/screen/screen_list.md) |
 | テーブル一覧 | [design/table/table_list.md](design/table/table_list.md) |
+| テーブルの関係（ER図） | [design/table/er_diagram.md](design/table/er_diagram.md) |
 | APIエンドポイント一覧 | [design/api/api_list.md](design/api/api_list.md) |
 | デザインのルール（色・フォント・状態表現等） | [design/design_guideline.md](design/design_guideline.md) |
 | まだ検討中のアイデア | [ideas/README.md](ideas/README.md) |

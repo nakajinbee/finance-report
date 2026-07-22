@@ -46,6 +46,7 @@ REPORT_FILING_DEADLINE_DAYS = {
 
 _last_request_time: float = 0.0
 _request_count: int = 0
+_document_list_cache: dict[date, list[dict]] = {}
 
 
 class EdinetApiError(Exception):
@@ -123,7 +124,17 @@ def fetch_document_list(target_date: date) -> list[dict]:
 
     書類一覧APIは成功・失敗どちらもHTTP 200で返るため、レスポンスJSON内の
     metadata.status で成否を判定する。
+
+    同一日付への2回目以降の呼び出しはプロセス内キャッシュから返す（サイクル8
+    FR-45）。異なる企業のsearch_reportが同じ日付範囲を探索することが多く
+    （決算期が集中する3月末近辺等）、EDINETへの重複リクエストが多いことが
+    サイクル7の実測で判明したため。過去日の提出履歴は後から変わらないため、
+    キャッシュに陳腐化のリスクはない（本関数は未来日を渡されない前提。
+    search_report側で既に未来日を除外している）。
     """
+    if target_date in _document_list_cache:
+        return _document_list_cache[target_date]
+
     response = _get(
         "/documents.json",
         {"date": target_date.isoformat(), "type": 2},
@@ -133,7 +144,9 @@ def fetch_document_list(target_date: date) -> list[dict]:
     if status != "200":
         message = body.get("metadata", {}).get("message", "unknown error")
         raise EdinetApiError(f"書類一覧APIがエラーを返しました: status={status}, message={message}")
-    return body.get("results") or []
+    results = body.get("results") or []
+    _document_list_cache[target_date] = results
+    return results
 
 
 def find_report(documents: list[dict], sec_code: str, doc_type_code: str) -> dict | None:
