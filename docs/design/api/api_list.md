@@ -27,10 +27,13 @@ IDは2グループに分ける。
 | No | APIID | Method | Path | 概要 | ファイル |
 |----|-------|--------|------|------|----------|
 | 1 | API-COM-001 | GET | `/api/companies` | DBに保存済みの企業一覧を返す | `paths/com/companies.yaml` |
-| 2 | API-COM-002 | GET | `/api/companies/{code}/financials?from_year=&to_year=` | 指定企業の財務データ（5指標）を返す（サイクル2で年度範囲指定に対応、FR-12） | `paths/com/companies_code_financials.yaml` |
+| 2 | API-COM-002 | GET | `/api/companies/{code}/financials?from_year=&to_year=` | 指定企業の財務データ（7指標）を返す（サイクル2で年度範囲指定に対応、FR-12） | `paths/com/companies_code_financials.yaml` |
 | 3 | API-COM-003 | GET | `/api/companies/{code}/cashflow?from_year=&to_year=` | 指定企業のキャッシュフロー（3項目）を返す（サイクル2新規、FR-13） | `paths/com/companies_code_cashflow.yaml` |
-| 4 | API-COM-004 | GET | `/api/companies/{code}/facts?element_id=&period_end=` | 指定企業の保存済みファクト一覧を返す（サイクル2新規、FR-16） | `paths/com/companies_code_facts.yaml` |
-| 5 | API-COM-005 | GET | `/api/companies/{code}/ratios?from_year=&to_year=` | 指定企業の財務分析指標（ROE・流動比率等）を返す（サイクル3新規、FR-23〜26） | `paths/com/companies_code_ratios.yaml` |
+| 4 | API-COM-005 | GET | `/api/companies/{code}/ratios?from_year=&to_year=` | 指定企業の財務分析指標（ROE・流動比率等）を返す（サイクル3新規、FR-23〜26） | `paths/com/companies_code_ratios.yaml` |
+| 5 | API-COM-006 | GET | `/api/companies/{code}/qualitative-facts?period_end=` | 指定企業の定性データ（事業の内容・事業等のリスク・MD&A）を返す（サイクル13新規、FR-58） | `paths/com/companies_code_qualitative_facts.yaml` |
+
+廃止：API-COM-004（`GET /api/companies/{code}/facts`、旧SCR-004向け）はサイクル13で
+SCR-004削除に伴い削除した。
 
 ---
 
@@ -40,5 +43,4 @@ IDは2グループに分ける。
 |---|---|---|
 | SCR-001 | ダウンロード画面 | API-EDN-001, API-EDN-002, API-EDN-003 |
 | SCR-002 | 企業一覧画面 | API-COM-001 |
-| SCR-003 | 企業詳細画面 | API-COM-002, API-COM-003, API-COM-005 |
-| SCR-004 | 保存済みデータ確認画面（サイクル2新規） | API-COM-004 |
+| SCR-003 | 企業詳細画面 | API-COM-002, API-COM-003, API-COM-005, API-COM-006 |

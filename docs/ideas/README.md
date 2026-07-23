@@ -75,3 +75,4 @@
 | IDEA-12 | 株価確認機能 | エンジニアリング | 未定 | 未定 | [IDEA-12_stock_price_check.md](IDEA-12_stock_price_check.md) |
 | IDEA-13 | ユースケース設計 | プロダクト/UX | 未定 | 完了（サイクル12） | [IDEA-13_use_case_design.md](IDEA-13_use_case_design.md) |
 | IDEA-14 | アプリのビジネスコンセプト決定 | ビジネス | 高 | 完了（サイクル11） | [IDEA-14_business_concept_definition.md](IDEA-14_business_concept_definition.md) |
+| IDEA-15 | 画面表示仕様の精緻化 | プロダクト/UX | 未定 | 未定（各ユースケース実装サイクル内、または横断サイクルで検討） | [IDEA-15_screen_display_spec_refinement.md](IDEA-15_screen_display_spec_refinement.md) |

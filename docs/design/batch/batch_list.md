@@ -10,7 +10,8 @@
 | 1 | BATCH-001 | 全上場企業マスタ一括登録 | EDINETコードリストから全上場企業の基本情報を`companies`へ一括登録する | 1回限り（企業マスタが古くなったら再実行を検討） | サイクル6 FR-39 | [BATCH-001_bulk_register_companies.md](BATCH-001_bulk_register_companies.md) |
 | 2 | BATCH-002 | バッチ取得タイミング検証 | サンプル企業でダウンロードを実行し、所要時間・EDINETリクエスト数を計測する（検証用） | 検証が必要な時のみ | サイクル7 FR-43、サイクル8 FR-46 | [BATCH-002_verify_batch_timing.md](BATCH-002_verify_batch_timing.md) |
 | 3 | BATCH-003 | 書類一覧バックフィル | EDINETの書類一覧APIを日付ごとに呼び、対象書類のメタデータを`documents`へ取り込む（過去分の一括投入・将来の日次実行の両方に使う共通ロジックを呼ぶ） | 1回限り（過去分投入）＋将来は日次（フェーズ4で自動化予定） | サイクル9 FR-49 | [BATCH-003_ingest_document_list.md](BATCH-003_ingest_document_list.md) |
-| 4 | BATCH-004 | 書類本体取り込み | `documents`の未取得書類を対象にCSVを取得し`facts`へ保存する | 定期的（`documents`に未取得書類がある限り実行） | サイクル9 FR-50 | [BATCH-004_ingest_document_bodies.md](BATCH-004_ingest_document_bodies.md) |
+| 4 | BATCH-004 | 書類本体取り込み | `documents`の未取得書類を対象にCSVを取得し`company_quantitative_facts`・`company_qualitative_facts`へ保存する | 定期的（`documents`に未取得書類がある限り実行） | サイクル9 FR-50、サイクル13 FR-58/59 | [BATCH-004_ingest_document_bodies.md](BATCH-004_ingest_document_bodies.md) |
+| 5 | BATCH-005 | 企業の定性データ遡及取得 | `company_quantitative_facts`に定量データが取り込み済みの書類を対象にCSVを再取得し、`company_qualitative_facts`を追加保存、`documents.body_ingested_at`も設定する（1回限りの遡及処理） | 1回限り | サイクル13 FR-58・FR-59・FR-60 | [BATCH-005_backfill_qualitative_facts.md](BATCH-005_backfill_qualitative_facts.md) |
 
 ---
 

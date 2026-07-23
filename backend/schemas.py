@@ -131,17 +131,14 @@ class RatioRecord(BaseModel):
     inventories: int | None = None
 
 
-class FactRecord(BaseModel):
-    """docs/design/api/components/schemas/FactRecord.yaml（FR-16、SCR-004向け）"""
+class CompanyQualitativeFacts(BaseModel):
+    """docs/design/api/components/schemas/CompanyQualitativeFacts.yaml（サイクル13新規、FR-58、SCR-003向け）"""
 
-    element_id: str
-    element_name: str | None = None
-    doc_type_code: str
     period_end: date
-    context_id: str
-    consolidated_or_individual: str | None = None
-    unit: str | None = None
-    value: float
+    available_periods: list[date]
+    business_description: str | None = None
+    business_risks: str | None = None
+    mdanda: str | None = None
 
 
 class ErrorResponse(BaseModel):

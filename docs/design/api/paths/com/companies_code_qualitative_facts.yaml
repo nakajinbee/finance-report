@@ -1,0 +1,43 @@
+get:
+  x-api-id: API-COM-006
+  summary: 企業の定性データ取得
+  description: |
+    指定した証券コードの企業の定性データ（事業の内容・事業等のリスク・MD&A）を返す
+    （サイクル13新規、FR-58）。
+
+    EDINETには一切アクセスせず、company_qualitative_factsテーブル（DB）のみを参照する。
+    period_end省略時は最新の書類の定性データを返す。
+  operationId: getCompanyQualitativeFacts
+  parameters:
+    - name: code
+      in: path
+      required: true
+      schema:
+        type: string
+        example: '6098'
+    - name: period_end
+      in: query
+      required: false
+      schema:
+        type: string
+        format: date
+        example: '2026-04-30'
+  responses:
+    '200':
+      description: 定性データ
+      content:
+        application/json:
+          schema:
+            $ref: '../../components/schemas/CompanyQualitativeFacts.yaml'
+    '404':
+      description: 指定した企業が存在しない、または定性データが存在しない
+      content:
+        application/json:
+          schema:
+            $ref: '../../components/schemas/Error.yaml'
+    '500':
+      description: サーバーエラー
+      content:
+        application/json:
+          schema:
+            $ref: '../../components/schemas/Error.yaml'

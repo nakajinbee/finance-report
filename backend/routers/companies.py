@@ -6,7 +6,7 @@ from fastapi.responses import JSONResponse
 import edinet_client
 import metric_mappings
 import schemas
-from database import Company, Fact, SessionLocal
+from database import Company, CompanyQualitativeFact, CompanyQuantitativeFact, SessionLocal
 
 # SCR-002（企業一覧画面）・SCR-003（企業詳細画面）・SCR-004（保存済みデータ確認画面、
 # docs/design/screen/配下）向けのAPI-COM-*系エンドポイント。DBのみを参照し、EDINETには
@@ -22,12 +22,14 @@ def _validate_year_range(from_year: int | None, to_year: int | None) -> schemas.
     return None
 
 
-def _filter_by_year_range(facts: list[Fact], from_year: int | None, to_year: int | None) -> list[Fact]:
+def _filter_by_year_range(
+    quantitative_facts: list[CompanyQuantitativeFact], from_year: int | None, to_year: int | None
+) -> list[CompanyQuantitativeFact]:
     return [
-        fact
-        for fact in facts
-        if (from_year is None or fact.period_end.year >= from_year)
-        and (to_year is None or fact.period_end.year <= to_year)
+        quantitative_fact
+        for quantitative_fact in quantitative_facts
+        if (from_year is None or quantitative_fact.period_end.year >= from_year)
+        and (to_year is None or quantitative_fact.period_end.year <= to_year)
     ]
 
 
@@ -36,16 +38,20 @@ def _local_name(element_id: str) -> str:
     return element_id.split(":")[-1]
 
 
-def _index_facts_by_period(facts: list[Fact]) -> dict[date, dict[tuple[str, str], float]]:
-    """factsを期間ごとに(ローカル名, コンテキストID)→値の辞書へ変換する（FR-17）
+def _index_quantitative_facts_by_period(
+    quantitative_facts: list[CompanyQuantitativeFact],
+) -> dict[date, dict[tuple[str, str], float]]:
+    """quantitative_factsを期間ごとに(ローカル名, コンテキストID)→値の辞書へ変換する（FR-17）
 
     値はfloatのまま保持し、整数への丸めは呼び出し元（金額を扱う_build_financial_records等）
     の責務とする。ROE・EPS等の比率指標は1未満の小数を取りうるため、ここでint化すると
     精度が失われる（サイクル3 FR-23〜26の実装時に発見・修正）。
     """
     index: dict[date, dict[tuple[str, str], float]] = {}
-    for fact in facts:
-        index.setdefault(fact.period_end, {})[(_local_name(fact.element_id), fact.context_id)] = float(fact.value)
+    for quantitative_fact in quantitative_facts:
+        index.setdefault(quantitative_fact.period_end, {})[
+            (_local_name(quantitative_fact.element_id), quantitative_fact.context_id)
+        ] = float(quantitative_fact.value)
     return index
 
 
@@ -54,9 +60,9 @@ def _lookup_metric(period_index: dict[tuple[str, str], float], candidates: list[
 
     連結子会社を持たない企業は経営指標等サマリーが個別ベースのみで提出され、
     コンテキストIDにNON_CONSOLIDATED_CONTEXT_SUFFIXが付くため、そちらもフォールバックで試す
-    （FR-18。連結・非連結の判別はコンテキストIDのサフィックスで行い、facts.consolidated_or_individual
-    列は使わない。この列は実データ上値が一定せず判別に使えないことを確認済み
-    ＝docs/design/cycle3_design.md参照）。
+    （FR-18。連結・非連結の判別はコンテキストIDのサフィックスで行い、
+    company_quantitative_facts.consolidated_or_individual列は使わない。この列は実データ上
+    値が一定せず判別に使えないことを確認済み ＝docs/design/cycle3_design.md参照）。
     """
     for local_name in candidates:
         for ctx in (context_id, context_id + metric_mappings.NON_CONSOLIDATED_CONTEXT_SUFFIX):
@@ -66,10 +72,12 @@ def _lookup_metric(period_index: dict[tuple[str, str], float], candidates: list[
     return None
 
 
-def _build_financial_records(facts: list[Fact], accounting_standard: str) -> list[schemas.FinancialRecord]:
-    """企業の会計基準に応じたmetric_mappings.FIVE_METRICSを使い、factsから5指標を組み立てる"""
+def _build_financial_records(
+    quantitative_facts: list[CompanyQuantitativeFact], accounting_standard: str
+) -> list[schemas.FinancialRecord]:
+    """企業の会計基準に応じたmetric_mappings.FIVE_METRICSを使い、quantitative_factsから5指標を組み立てる"""
     metric_candidates = metric_mappings.FIVE_METRICS.get(accounting_standard, {})
-    period_index = _index_facts_by_period(facts)
+    period_index = _index_quantitative_facts_by_period(quantitative_facts)
 
     records = []
     for period_end in sorted(period_index):
@@ -97,10 +105,12 @@ def _build_financial_records(facts: list[Fact], accounting_standard: str) -> lis
     return records
 
 
-def _build_cash_flow_records(facts: list[Fact], accounting_standard: str) -> list[schemas.CashFlowRecord]:
-    """企業の会計基準に応じたmetric_mappings.CASH_FLOWを使い、factsから営業・投資・財務CFを組み立てる（FR-13）"""
+def _build_cash_flow_records(
+    quantitative_facts: list[CompanyQuantitativeFact], accounting_standard: str
+) -> list[schemas.CashFlowRecord]:
+    """企業の会計基準に応じたmetric_mappings.CASH_FLOWを使い、quantitative_factsから営業・投資・財務CFを組み立てる（FR-13）"""
     cf_candidates = metric_mappings.CASH_FLOW.get(accounting_standard, {})
-    period_index = _index_facts_by_period(facts)
+    period_index = _index_quantitative_facts_by_period(quantitative_facts)
 
     records = []
     for period_end in sorted(period_index):
@@ -129,7 +139,9 @@ def _safe_div(numerator: int | float | None, denominator: int | float | None) ->
     return numerator / denominator
 
 
-def _build_ratio_records(facts: list[Fact], accounting_standard: str) -> list[schemas.RatioRecord]:
+def _build_ratio_records(
+    quantitative_facts: list[CompanyQuantitativeFact], accounting_standard: str
+) -> list[schemas.RatioRecord]:
     """metric_mappings.DISCLOSED_RATIOS・BALANCE_SHEET_ITEMSを使い、財務分析指標を組み立てる
 
     ROE・自己資本比率等はEDINET開示値を優先し、開示されていない指標のみ既存5指標・
@@ -137,8 +149,8 @@ def _build_ratio_records(facts: list[Fact], accounting_standard: str) -> list[sc
     """
     disclosed_candidates = metric_mappings.DISCLOSED_RATIOS.get(accounting_standard, {})
     balance_sheet_candidates = metric_mappings.BALANCE_SHEET_ITEMS.get(accounting_standard, {})
-    period_index = _index_facts_by_period(facts)
-    financial_by_period = {r.period_end: r for r in _build_financial_records(facts, accounting_standard)}
+    period_index = _index_quantitative_facts_by_period(quantitative_facts)
+    financial_by_period = {r.period_end: r for r in _build_financial_records(quantitative_facts, accounting_standard)}
 
     records = []
     for period_end in sorted(period_index):
@@ -202,10 +214,10 @@ def list_companies():
         result = []
         for company in companies:
             periods = (
-                session.query(Fact.period_end)
+                session.query(CompanyQuantitativeFact.period_end)
                 .filter_by(company_code=company.code)
                 .distinct()
-                .order_by(Fact.period_end)
+                .order_by(CompanyQuantitativeFact.period_end)
                 .all()
             )
             result.append(
@@ -243,14 +255,14 @@ def get_company_financials(code: str, from_year: int | None = None, to_year: int
                 ).model_dump(),
             )
 
-        facts = (
-            session.query(Fact)
+        quantitative_facts = (
+            session.query(CompanyQuantitativeFact)
             .filter_by(company_code=code, doc_type_code=edinet_client.DOC_TYPE_CODE_ANNUAL_REPORT)
-            .order_by(Fact.period_end)
+            .order_by(CompanyQuantitativeFact.period_end)
             .all()
         )
-        facts = _filter_by_year_range(facts, from_year, to_year)
-        records = _build_financial_records(facts, company.accounting_standard)
+        quantitative_facts = _filter_by_year_range(quantitative_facts, from_year, to_year)
+        records = _build_financial_records(quantitative_facts, company.accounting_standard)
 
         return schemas.CompanyFinancials(
             company=schemas.Company(
@@ -284,14 +296,14 @@ def get_company_cash_flow(code: str, from_year: int | None = None, to_year: int 
                 ).model_dump(),
             )
 
-        facts = (
-            session.query(Fact)
+        quantitative_facts = (
+            session.query(CompanyQuantitativeFact)
             .filter_by(company_code=code, doc_type_code=edinet_client.DOC_TYPE_CODE_ANNUAL_REPORT)
-            .order_by(Fact.period_end)
+            .order_by(CompanyQuantitativeFact.period_end)
             .all()
         )
-        facts = _filter_by_year_range(facts, from_year, to_year)
-        return _build_cash_flow_records(facts, company.accounting_standard)
+        quantitative_facts = _filter_by_year_range(quantitative_facts, from_year, to_year)
+        return _build_cash_flow_records(quantitative_facts, company.accounting_standard)
     finally:
         session.close()
 
@@ -314,21 +326,28 @@ def get_company_ratios(code: str, from_year: int | None = None, to_year: int | N
                 ).model_dump(),
             )
 
-        facts = (
-            session.query(Fact)
+        quantitative_facts = (
+            session.query(CompanyQuantitativeFact)
             .filter_by(company_code=code, doc_type_code=edinet_client.DOC_TYPE_CODE_ANNUAL_REPORT)
-            .order_by(Fact.period_end)
+            .order_by(CompanyQuantitativeFact.period_end)
             .all()
         )
-        facts = _filter_by_year_range(facts, from_year, to_year)
-        return _build_ratio_records(facts, company.accounting_standard)
+        quantitative_facts = _filter_by_year_range(quantitative_facts, from_year, to_year)
+        return _build_ratio_records(quantitative_facts, company.accounting_standard)
     finally:
         session.close()
 
 
-@router.get("/companies/{code}/facts", response_model=list[schemas.FactRecord])
-def get_company_facts(code: str, element_id: str | None = None, period_end: date | None = None):
-    """API-COM-004: 指定企業のTBL-003 facts生データを一覧で返す（SCR-004、FR-16）"""
+
+
+@router.get("/companies/{code}/qualitative-facts", response_model=schemas.CompanyQualitativeFacts)
+def get_company_qualitative_facts(code: str, period_end: date | None = None):
+    """API-COM-006: 指定企業の定性データ（事業の内容・事業等のリスク・MD&A）を返す
+    （SCR-003 定性情報セクション、サイクル13新規、FR-58）
+
+    EDINETには一切アクセスせず、company_qualitative_factsテーブル（DB）のみを参照する。
+    period_end省略時は最新の書類の定性データを返す。
+    """
     session = SessionLocal()
     try:
         company = session.get(Company, code)
@@ -340,25 +359,47 @@ def get_company_facts(code: str, element_id: str | None = None, period_end: date
                 ).model_dump(),
             )
 
-        query = session.query(Fact).filter_by(company_code=code)
-        if element_id is not None:
-            query = query.filter(Fact.element_id.contains(element_id))
-        if period_end is not None:
-            query = query.filter_by(period_end=period_end)
-        facts = query.order_by(Fact.period_end.desc(), Fact.element_id.asc()).all()
-
-        return [
-            schemas.FactRecord(
-                element_id=fact.element_id,
-                element_name=fact.element_name,
-                doc_type_code=fact.doc_type_code,
-                period_end=fact.period_end,
-                context_id=fact.context_id,
-                consolidated_or_individual=fact.consolidated_or_individual,
-                unit=fact.unit,
-                value=float(fact.value),
-            )
-            for fact in facts
+        available_periods = [
+            row[0]
+            for row in session.query(CompanyQualitativeFact.period_end)
+            .filter_by(company_code=code)
+            .distinct()
+            .order_by(CompanyQualitativeFact.period_end.desc())
+            .all()
+            if row[0] is not None
         ]
+        if not available_periods:
+            return JSONResponse(
+                status_code=404,
+                content=schemas.ErrorResponse(
+                    error="QUALITATIVE_FACTS_NOT_FOUND", message="指定した企業の定性データが存在しません"
+                ).model_dump(),
+            )
+
+        target_period_end = period_end if period_end is not None else available_periods[0]
+        if target_period_end not in available_periods:
+            return JSONResponse(
+                status_code=404,
+                content=schemas.ErrorResponse(
+                    error="QUALITATIVE_FACTS_NOT_FOUND", message="指定した年度の定性データが存在しません"
+                ).model_dump(),
+            )
+
+        records = (
+            session.query(CompanyQualitativeFact)
+            .filter_by(company_code=code, period_end=target_period_end)
+            .all()
+        )
+        content_by_element = {record.element_id: record.content for record in records}
+
+        return schemas.CompanyQualitativeFacts(
+            period_end=target_period_end,
+            available_periods=available_periods,
+            business_description=content_by_element.get("jpcrp_cor:DescriptionOfBusinessTextBlock"),
+            business_risks=content_by_element.get("jpcrp_cor:BusinessRisksTextBlock"),
+            mdanda=content_by_element.get(
+                "jpcrp_cor:ManagementAnalysisOfFinancialPositionOperatingResultsAndCashFlowsTextBlock"
+            ),
+        )
     finally:
         session.close()

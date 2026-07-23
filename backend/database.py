@@ -10,6 +10,7 @@ from sqlalchemy import (
     Index,
     Numeric,
     String,
+    Text,
     UniqueConstraint,
     create_engine,
 )
@@ -38,10 +39,10 @@ class Company(Base):
     accounting_standard: Mapped[str | None] = mapped_column(String(50), nullable=True)
 
 
-class Fact(Base):
-    """TBL-003 facts（TBL-002 financialsの後継、サイクル2）"""
+class CompanyQuantitativeFact(Base):
+    """TBL-003 company_quantitative_facts（企業の定量データ。旧名facts、TBL-002 financialsの後継、サイクル2・サイクル13で命名是正）"""
 
-    __tablename__ = "facts"
+    __tablename__ = "company_quantitative_facts"
     __table_args__ = (
         UniqueConstraint(
             "company_code", "doc_id", "element_id", "context_id", name="uq_company_doc_element_context"
@@ -69,14 +70,15 @@ class Fact(Base):
 class Document(Base):
     """TBL-004 documents（書類一覧APIのメタデータ、サイクル9）
 
-    facts（数値データそのもの）とは別に「どの書類が存在するか」の索引を持つ。
-    company_code・sec_codeを持たない書類（ファンド等）や、対象外の書類種別
-    （有価証券報告書・半期報告書以外）は保存しない。
+    company_quantitative_facts・company_qualitative_facts（値・テキストそのもの）
+    とは別に「どの書類が存在するか」の索引を持つ。company_code・sec_codeを
+    持たない書類（ファンド等）や、対象外の書類種別（有価証券報告書・半期報告書
+    以外）は保存しない。
     """
 
     __tablename__ = "documents"
     __table_args__ = (
-        Index("idx_documents_company_ingested", "company_code", "facts_ingested_at"),
+        Index("idx_documents_company_ingested", "company_code", "body_ingested_at"),
         Index("idx_documents_list_date", "list_date"),
     )
 
@@ -93,4 +95,27 @@ class Document(Base):
     withdrawal_status: Mapped[str | None] = mapped_column(String(1), nullable=True)
     disclosure_status: Mapped[str | None] = mapped_column(String(1), nullable=True)
     csv_flag: Mapped[str | None] = mapped_column(String(1), nullable=True)
-    facts_ingested_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    body_ingested_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+
+class CompanyQualitativeFact(Base):
+    """TBL-005 company_qualitative_facts（企業の定性データ、サイクル13新設）
+
+    company_quantitative_factsが数値データを持つのに対し、こちらは事業の内容・
+    事業等のリスク・MD&Aのテキストブロックを保持する。
+    """
+
+    __tablename__ = "company_qualitative_facts"
+    __table_args__ = (
+        Index("idx_company_qualitative_facts_company_period", "company_code", "period_end"),
+    )
+
+    doc_id: Mapped[str] = mapped_column(
+        String(8), ForeignKey("documents.doc_id", ondelete="CASCADE"), primary_key=True
+    )
+    element_id: Mapped[str] = mapped_column(String(100), primary_key=True)
+    company_code: Mapped[str] = mapped_column(
+        String(10), ForeignKey("companies.code", ondelete="CASCADE"), nullable=False
+    )
+    period_end: Mapped[date | None] = mapped_column(Date, nullable=True)
+    content: Mapped[str] = mapped_column(Text, nullable=False)

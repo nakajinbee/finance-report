@@ -19,6 +19,30 @@ TARGET_DOC_TYPE_CODES = {
 }
 
 
+def upsert_document_from_row(session, company_code: str, list_date: date, row: dict) -> Document:
+    """書類一覧API（または個別ダウンロードで見つけた書類）の1件分をdocumentsへupsertする。
+
+    document_list_ingestion（書類一覧の日次取り込み）とrouters/edinet.py（個別ダウンロード、
+    SCR-001）の両方から使う共通処理（サイクル13 FR-59で統一。個別ダウンロードは長らく
+    documentsテーブルを更新しておらず、body_ingested_atが実態を反映しない原因になっていた）。
+    """
+    document = session.get(Document, row["docID"])
+    if document is None:
+        document = Document(doc_id=row["docID"])
+        session.add(document)
+    document.edinet_code = row["edinetCode"]
+    document.company_code = company_code
+    document.doc_type_code = row["docTypeCode"]
+    document.period_start = date.fromisoformat(row["periodStart"]) if row.get("periodStart") else None
+    document.period_end = date.fromisoformat(row["periodEnd"]) if row.get("periodEnd") else None
+    document.submit_date_time = row["submitDateTime"]
+    document.list_date = list_date
+    document.withdrawal_status = row.get("withdrawalStatus")
+    document.disclosure_status = row.get("disclosureStatus")
+    document.csv_flag = row.get("csvFlag")
+    return document
+
+
 def ingest_document_list_for_date(session, target_date: date) -> dict[str, int]:
     """指定日の書類一覧を取得し、対象書類をdocumentsへupsertする。件数の内訳を返す。"""
     counts = {"stored": 0, "skipped_doctype_or_no_seccode": 0, "skipped_conversion": 0, "skipped_no_company": 0}
@@ -39,20 +63,7 @@ def ingest_document_list_for_date(session, target_date: date) -> dict[str, int]:
             counts["skipped_no_company"] += 1
             continue
 
-        document = session.get(Document, row["docID"])
-        if document is None:
-            document = Document(doc_id=row["docID"])
-            session.add(document)
-        document.edinet_code = row["edinetCode"]
-        document.company_code = company_code
-        document.doc_type_code = row["docTypeCode"]
-        document.period_start = date.fromisoformat(row["periodStart"]) if row.get("periodStart") else None
-        document.period_end = date.fromisoformat(row["periodEnd"]) if row.get("periodEnd") else None
-        document.submit_date_time = row["submitDateTime"]
-        document.list_date = target_date
-        document.withdrawal_status = row.get("withdrawalStatus")
-        document.disclosure_status = row.get("disclosureStatus")
-        document.csv_flag = row.get("csvFlag")
+        upsert_document_from_row(session, company_code, target_date, row)
         counts["stored"] += 1
 
     session.commit()

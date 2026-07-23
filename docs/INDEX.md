@@ -19,12 +19,12 @@ docs/
 ├── requirements/                         ← 要件定義（cycleN_requirements.md・レビュー結果）
 │   ├── self_review_rule.md
 │   ├── cycleX_backlog.md                 ← 「やる」と決まったが未着手の事項（一元管理）
-│   └── cycle1〜9_requirements.md / _review.md
+│   └── cycle1〜13_requirements.md / _review.md
 │
 ├── design/                               ← 設計
 │   ├── self_review_rule.md
 │   ├── design_guideline.md               ← 本番デザインコンセプト（配色・タイポグラフィ等、常に最終断面のみ）
-│   ├── cycle1,3,4,5,6,7,8,9_design.md / _review.md
+│   ├── cycle1,3,4,5,6,7,8,9,10,11,12,13_design.md / _review.md
 │   ├── screen/                           ← 画面定義書（詳細：screen/screen_list.md）
 │   ├── api/                              ← API設計書（詳細：api/api_list.md、openapi.yaml）
 │   ├── table/                            ← テーブル定義書（詳細：table/table_list.md、er_diagram.md）
@@ -32,7 +32,7 @@ docs/
 │
 ├── development/                          ← 開発
 │   ├── self_review_rule.md
-│   ├── cycle2〜12_development_review.md
+│   ├── cycle2〜13_development_review.md
 │   ├── cycle7_batch_timing_estimate.md   ← 全社展開時の所要時間・データ量見積もり＋サイクル8の再検証結果（旧方式、IDEA-01フェーズ2）
 │   ├── cycle10_db_migration_decision.md  ← SQLite継続／他DB移行の判断（IDEA-01フェーズ6）
 │   ├── backend_implementation_policy.md
@@ -50,7 +50,8 @@ docs/
 │
 ├── product/                              ← プロダクトコンセプト
 │   ├── concept.md                        ← 想定利用者・提供価値・事業化スタンス（常に最終断面のみ）
-│   └── use_cases.md                      ← ユースケース一覧（大項目/中項目/小項目、UC-x-xで参照。常に最終断面のみ）
+│   ├── use_cases.md                      ← ユースケース一覧（大項目/中項目/小項目、UC-x-xで参照。常に最終断面のみ）
+│   └── use_case_details/                 ← ユースケース詳細（画面遷移・関連機能・依存関係。大項目ごとにフォルダ分け）
 │
 └── external/edinet/                      ← EDINET公式仕様書（PDF）
 ```
@@ -79,14 +80,20 @@ docs/
 | サイクル10 | データ量・並行アクセスパターンをもとにDB移行判断（[IDEA-01](ideas/IDEA-01_db_batch_ingestion.md)フェーズ6） | 完了 |
 | サイクル11 | アプリのビジネスコンセプト決定（[IDEA-14](ideas/IDEA-14_business_concept_definition.md)、[product/concept.md](product/concept.md)） | 完了 |
 | サイクル12 | ユースケース設計（[IDEA-13](ideas/IDEA-13_use_case_design.md)、[product/use_cases.md](product/use_cases.md)） | 完了 |
-| 次サイクル | 未定。`use_cases.md`のUC-x-xから、画面フロー→画面→API→バッチの順で1件ずつ着手 | 企画待ち |
+| サイクル13 | UC-1-1（特定企業の深掘り調査）実装。定性データ（事業概要・リスク）の追加、`facts`→`company_quantitative_facts`等の命名是正、個別ダウンロード機能とdocumentsテーブルの不整合是正 | 完了 |
+| 次サイクル | 未定。`use_cases.md`のUC-1-2・UC-1-3等から、画面フロー→画面→API→バッチの順で1件ずつ着手 | 企画待ち |
 
 現時点で残っている大きな論点：
-- アプリのコンセプト（サイクル11）・ユースケース一覧（サイクル12）がいずれも確定した。
-  以降のサイクルは`docs/product/use_cases.md`のユースケース単位（UC-x-x）で機能を
-  設計・実装する（[cycle-workflow](../.claude/skills/cycle-workflow/SKILL.md)参照）。
+- アプリのコンセプト（サイクル11）・ユースケース一覧（サイクル12）がいずれも確定し、
+  サイクル13でUC-1-1（特定企業の深掘り調査）を実装した。以降のサイクルも
+  `docs/product/use_cases.md`のユースケース単位（UC-x-x）で機能を設計・実装する
+  （[cycle-workflow](../.claude/skills/cycle-workflow/SKILL.md)参照）。
   [IDEA-10](ideas/IDEA-10_report_purpose_redesign.md)（画面の再設計）は各ユースケース
   実装サイクルの「画面の整理」ステップに組み込まれる想定
+- サイクル13でSCR-004（保存済みデータ確認画面）・API-COM-004を削除した
+  （ユースケースに紐づかない開発者向け機能と判断）。定性データの表示品質
+  （EDINET CSV変換時点で表構造が失われる制約）への対応は
+  [requirements/cycleX_backlog.md](requirements/cycleX_backlog.md)へ送った
 - `use_cases.md`のUC-1-5・UC-3-4・UC-3-5は株価データ取得基盤（未着手、
   [IDEA-12](ideas/IDEA-12_stock_price_check.md)が関連）に依存し、UC-3-3はUC-1-4
   （定点観測）に依存するため、着手順序を検討する際は注意する
@@ -113,6 +120,7 @@ docs/
 | デザインのルール（色・フォント・状態表現等） | [design/design_guideline.md](design/design_guideline.md) |
 | アプリのコンセプト（想定利用者・提供価値・事業化スタンス） | [product/concept.md](product/concept.md) |
 | ユースケース一覧（UC-x-x、以降のサイクルの着手単位） | [product/use_cases.md](product/use_cases.md) |
+| ユースケース詳細（画面遷移・関連機能・依存関係） | [product/use_case_details/](product/use_case_details/) |
 | まだ検討中のアイデア | [ideas/README.md](ideas/README.md) |
 | 「やる」と決まったが未着手の事項 | [requirements/cycleX_backlog.md](requirements/cycleX_backlog.md) |
 | 会計・EDINETのドメイン知識 | [domain/](domain/) |

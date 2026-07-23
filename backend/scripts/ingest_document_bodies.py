@@ -20,7 +20,7 @@ def main() -> None:
     failed = 0
 
     with SessionLocal() as session:
-        query = session.query(Document).filter(Document.facts_ingested_at.is_(None), Document.csv_flag == "1")
+        query = session.query(Document).filter(Document.body_ingested_at.is_(None), Document.csv_flag == "1")
         if SAMPLE_LIMIT is not None:
             query = query.limit(SAMPLE_LIMIT)
         documents = query.all()

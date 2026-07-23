@@ -3,9 +3,11 @@ import { useNavigate, useParams } from "react-router-dom";
 import {
   getCompanyCashFlow,
   getCompanyFinancials,
+  getCompanyQualitativeFacts,
   getCompanyRatios,
   type CashFlowRecord,
   type CompanyFinancials,
+  type CompanyQualitativeFacts,
   type RatioRecord,
 } from "../api/client";
 import { Button } from "../components/Button";
@@ -14,6 +16,7 @@ import { CashFlowTable } from "../components/CashFlowTable";
 import { ErrorMessage } from "../components/ErrorMessage";
 import { FinancialMetricSection } from "../components/FinancialMetricSection";
 import { Panel } from "../components/Panel";
+import { QualitativeFactSection } from "../components/QualitativeFactSection";
 import { RatioCategorySection } from "../components/RatioCategorySection";
 import { BS_METRIC_DEFINITIONS, PL_METRIC_DEFINITIONS } from "../lib/metrics";
 import {
@@ -42,6 +45,8 @@ export function CompanyDetailPage() {
   const [availableYears, setAvailableYears] = useState<number[]>([]);
   const [fromYear, setFromYear] = useState<number | null>(null);
   const [toYear, setToYear] = useState<number | null>(null);
+  const [qualitativeFacts, setQualitativeFacts] = useState<CompanyQualitativeFacts | null>(null);
+  const [selectedQualitativePeriod, setSelectedQualitativePeriod] = useState<string | undefined>(undefined);
 
   // 初回ロード：保存済みの全期間を取得し、年度選択の選択肢と初期選択（全期間）を決める
   useEffect(() => {
@@ -105,6 +110,32 @@ export function CompanyDetailPage() {
     };
   }, [code, fromYear, toYear]);
 
+  // 定性情報：財務グラフの年度範囲選択とは独立して取得する（サイクル13 FR-58）。
+  // selectedQualitativePeriodが未選択（undefined）の間は最新年度を取得し、
+  // レスポンスのperiod_endを初期選択値としてセットする
+  useEffect(() => {
+    if (!code) {
+      return;
+    }
+    let cancelled = false;
+    getCompanyQualitativeFacts(code, selectedQualitativePeriod).then((result) => {
+      if (cancelled) {
+        return;
+      }
+      if (result.ok) {
+        setQualitativeFacts(result.data);
+        if (selectedQualitativePeriod === undefined) {
+          setSelectedQualitativePeriod(result.data.period_end);
+        }
+      } else {
+        setQualitativeFacts(null);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [code, selectedQualitativePeriod]);
+
   if (loadState === "loading") {
     return (
       <div className="flex justify-center py-16 text-gray-500">
@@ -135,21 +166,11 @@ export function CompanyDetailPage() {
         ← 企業一覧へ
       </button>
 
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-xl font-semibold">{financials.company.name}</h1>
-          <p className="text-gray-500">
-            会計基準：{financials.company.accounting_standard ?? "データ未取得"}
-          </p>
-        </div>
-        {code && (
-          <Button
-            variant="secondary"
-            onClick={() => navigate(`/companies/${code}/facts`)}
-          >
-            生データを確認
-          </Button>
-        )}
+      <div>
+        <h1 className="text-xl font-semibold">{financials.company.name}</h1>
+        <p className="text-gray-500">
+          会計基準：{financials.company.accounting_standard ?? "データ未取得"}
+        </p>
       </div>
 
       {availableYears.length > 0 && fromYear !== null && toYear !== null && (
@@ -251,6 +272,41 @@ export function CompanyDetailPage() {
           </Button>
         </Panel>
       )}
+
+      <Panel className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-gray-900">事業概要・リスク</h2>
+          {qualitativeFacts && (
+            <label className="flex items-center gap-2 text-sm">
+              年度：
+              <select
+                value={selectedQualitativePeriod ?? qualitativeFacts.period_end}
+                onChange={(e) => setSelectedQualitativePeriod(e.target.value)}
+                className="rounded border border-gray-300 px-2 py-1 outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
+              >
+                {qualitativeFacts.available_periods.map((period) => (
+                  <option key={period} value={period}>
+                    {period}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+        </div>
+        {!qualitativeFacts ? (
+          <p className="text-gray-500">事業概要・リスク情報はありません</p>
+        ) : qualitativeFacts.business_description === null &&
+          qualitativeFacts.business_risks === null &&
+          qualitativeFacts.mdanda === null ? (
+          <p className="text-gray-500">この年度の事業概要・リスク情報はありません</p>
+        ) : (
+          <div>
+            <QualitativeFactSection title="事業の内容" content={qualitativeFacts.business_description} />
+            <QualitativeFactSection title="事業等のリスク" content={qualitativeFacts.business_risks} />
+            <QualitativeFactSection title="経営者による分析（MD&A）" content={qualitativeFacts.mdanda} />
+          </div>
+        )}
+      </Panel>
     </div>
   );
 }

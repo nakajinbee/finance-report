@@ -26,5 +26,5 @@ paths:
     $ref: './paths/com/companies_code_financials.yaml'
   /api/companies/{code}/cashflow:
     $ref: './paths/com/companies_code_cashflow.yaml'
-  /api/companies/{code}/facts:
-    $ref: './paths/com/companies_code_facts.yaml'
+  /api/companies/{code}/qualitative-facts:
+    $ref: './paths/com/companies_code_qualitative_facts.yaml'

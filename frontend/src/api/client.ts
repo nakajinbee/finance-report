@@ -57,15 +57,12 @@ export type RatioRecord = {
   inventories: number | null;
 };
 
-export type FactRecord = {
-  element_id: string;
-  element_name: string | null;
-  doc_type_code: string;
+export type CompanyQualitativeFacts = {
   period_end: string;
-  context_id: string;
-  consolidated_or_individual: string | null;
-  unit: string | null;
-  value: number;
+  available_periods: string[];
+  business_description: string | null;
+  business_risks: string | null;
+  mdanda: string | null;
 };
 
 export type DownloadLogStatus = "pending" | "in_progress" | "done" | "skipped" | "error";
@@ -178,11 +175,10 @@ export function getCompanyRatios(
   return requestJson(`/api/companies/${code}/ratios${buildQuery({ from_year: fromYear, to_year: toYear })}`);
 }
 
-// API-COM-004: 企業の保存済みファクト一覧取得
-export function getCompanyFacts(
+// API-COM-006: 企業の定性データ取得（サイクル13新規）
+export function getCompanyQualitativeFacts(
   code: string,
-  elementId?: string,
   periodEnd?: string,
-): Promise<ApiResult<FactRecord[]>> {
-  return requestJson(`/api/companies/${code}/facts${buildQuery({ element_id: elementId, period_end: periodEnd })}`);
+): Promise<ApiResult<CompanyQualitativeFacts>> {
+  return requestJson(`/api/companies/${code}/qualitative-facts${buildQuery({ period_end: periodEnd })}`);
 }

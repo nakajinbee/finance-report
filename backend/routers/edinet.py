@@ -1,5 +1,5 @@
 import threading
-from datetime import date
+from datetime import date, datetime
 
 from fastapi import APIRouter, BackgroundTasks
 from fastapi.responses import JSONResponse
@@ -7,8 +7,9 @@ from fastapi.responses import JSONResponse
 import edinet_client
 import schemas
 import xbrl_parser
-from database import Company, Fact, SessionLocal
-from fact_ingestion import upsert_company, upsert_facts
+from database import Company, CompanyQuantitativeFact, SessionLocal
+from document_list_ingestion import upsert_document_from_row
+from quantitative_fact_ingestion import upsert_company, upsert_qualitative_facts, upsert_quantitative_facts
 
 # SCR-001（ダウンロード画面、docs/design/screen/SCR-001_download.md）向けのAPI-EDN-*系エンドポイント。
 router = APIRouter()
@@ -41,9 +42,12 @@ def _determine_target_fiscal_years(period: schemas.DownloadPeriod, latest_availa
     return list(range(period.to_year, period.from_year - 1, -1))
 
 
-def _fact_exists_for_period(session, company_code: str, period_end: date) -> bool:
+def _quantitative_fact_exists_for_period(session, company_code: str, period_end: date) -> bool:
     return (
-        session.query(Fact.id).filter_by(company_code=company_code, period_end=period_end).first() is not None
+        session.query(CompanyQuantitativeFact.id)
+        .filter_by(company_code=company_code, period_end=period_end)
+        .first()
+        is not None
     )
 
 
@@ -121,7 +125,7 @@ def run_download_job(company_code: str, edinet_code: str, period: schemas.Downlo
         for i, (year, doc_type_code) in enumerate(targets):
             expected_period_end = _expected_period_end(filer_info, year, doc_type_code)
 
-            if _fact_exists_for_period(session, company_code, expected_period_end):
+            if _quantitative_fact_exists_for_period(session, company_code, expected_period_end):
                 state.logs[i].status = schemas.DownloadLogStatus.SKIPPED
                 state.logs[i].message = "スキップ（既存データあり）"
                 any_success = True
@@ -143,13 +147,29 @@ def run_download_job(company_code: str, edinet_code: str, period: schemas.Downlo
                     upsert_company(session, company_code, filer_info.name, filer_info.sector, accounting_standard)
                     session.commit()
 
-                facts = xbrl_parser.parse_numeric_facts(csv_bytes)
+                quantitative_facts = xbrl_parser.parse_quantitative_facts(csv_bytes)
 
                 # 書類取得APIのdocument["periodEnd"]は使わず、決算日から算出した期間終了日を
                 # 保存する。半期報告書ではEDINET側のperiodEndが対象期間（半期末）ではなく
                 # 対象事業年度の期末（年度末）を返すことが実機検証で判明したため
                 # （2026-07-20、リクルートHD 2024年9月期半期報告書で確認）。
-                upsert_facts(session, company_code, document["docID"], document["docTypeCode"], expected_period_end, facts)
+                upsert_quantitative_facts(
+                    session, company_code, document["docID"], document["docTypeCode"], expected_period_end, quantitative_facts
+                )
+
+                # documentsテーブルのレコードを作成/更新し、body_ingested_atを設定する
+                # （サイクル13 FR-59。個別ダウンロードは長らくdocumentsを更新しておらず、
+                # body_ingested_atが「本体取り込み済みか」の実態を反映していなかった）。
+                # list_dateはsubmitDateTimeの日付部分で代用する（この書類を発見したのは
+                # 書類一覧APIの日次取り込みではなく個別検索のため、正確な取得日は無いが、
+                # 進捗管理用の参考値としては提出日で十分）
+                list_date = date.fromisoformat(document["submitDateTime"][:10])
+                document_row = upsert_document_from_row(session, company_code, list_date, document)
+
+                qualitative_facts = xbrl_parser.parse_qualitative_facts(csv_bytes)
+                upsert_qualitative_facts(session, company_code, document["docID"], expected_period_end, qualitative_facts)
+
+                document_row.body_ingested_at = datetime.now()
                 session.commit()
 
                 state.logs[i].status = schemas.DownloadLogStatus.DONE

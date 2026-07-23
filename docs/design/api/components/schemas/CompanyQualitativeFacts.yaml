@@ -1,0 +1,27 @@
+type: object
+description: サイクル13新規（FR-58）。指定年度の企業の定性データ（事業の内容・事業等のリスク・MD&A）
+properties:
+  period_end:
+    type: string
+    format: date
+    description: このレスポンスが対象とする書類の期末日
+    example: '2026-04-30'
+  available_periods:
+    type: array
+    description: 定性データが存在する書類のperiod_end一覧（降順）。年度セレクタの選択肢に使う
+    items:
+      type: string
+      format: date
+    example: ['2026-04-30', '2025-04-30', '2024-04-30']
+  business_description:
+    type: string
+    nullable: true
+    description: 事業の内容（jpcrp_cor:DescriptionOfBusinessTextBlock）。存在しない場合null
+  business_risks:
+    type: string
+    nullable: true
+    description: 事業等のリスク（jpcrp_cor:BusinessRisksTextBlock）。存在しない場合null
+  mdanda:
+    type: string
+    nullable: true
+    description: 経営者による財政状態、経営成績及びキャッシュ・フローの状況の分析（MD&A）。存在しない場合null
