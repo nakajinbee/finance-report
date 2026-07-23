@@ -19,6 +19,11 @@ properties:
     nullable: true
     description: 営業利益（円）
     example: 412300000000
+  ordinary_profit:
+    type: integer
+    nullable: true
+    description: 経常利益（円）。Japan GAAP特有の概念のため、IFRS/US GAAP企業では常にnull（サイクル3新規、FR-27〜28）
+    example: 420000000000
   net_profit:
     type: integer
     nullable: true
@@ -34,3 +39,8 @@ properties:
     nullable: true
     description: 負債合計（円）
     example: 1543200000000
+  equity:
+    type: integer
+    nullable: true
+    description: 自己資本（純資産、円）（サイクル3新規、FR-27〜28）
+    example: 1444400000000

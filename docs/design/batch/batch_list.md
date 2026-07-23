@@ -22,6 +22,6 @@
 | モジュール | 役割 | 使用バッチ |
 |---|---|---|
 | `backend/edinet_client.py` | EDINET通信（レート制限・リトライ・キャッシュ込み） | 全バッチ |
-| `backend/fact_ingestion.py` | `companies`・`facts`テーブルへの書き込み（`upsert_company`・`upsert_facts`） | BATCH-001（間接）、BATCH-004、`routers/edinet.py`（個別ダウンロードAPI） |
+| `backend/quantitative_fact_ingestion.py` | `companies`・`company_quantitative_facts`・`company_qualitative_facts`テーブルへの書き込み（`upsert_company`・`upsert_quantitative_facts`・`upsert_qualitative_facts`） | BATCH-001（間接）、BATCH-004、BATCH-005、`routers/edinet.py`（個別ダウンロードAPI） |
 | `backend/document_list_ingestion.py` | 1日分の書類一覧取り込み（`ingest_document_list_for_date`） | BATCH-003 |
 | `backend/document_body_ingestion.py` | 1件の書類本体取り込み（`ingest_document_body`） | BATCH-004 |

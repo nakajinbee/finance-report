@@ -4,9 +4,9 @@ get:
   description: |
     指定した証券コードの企業の財務分析指標（ROE・自己資本比率・流動比率・棚卸資産回転率等）を
     期間分返す（FR-23〜26）。
-    EDINET自己開示の比率（グループA）を優先し、開示がない指標のみTBL-003 factsの生データから
-    計算する（グループB・C）。API-COM-002と同じ理由で、有価証券報告書（docTypeCode: 120）
-    由来のfactsのみを対象とする。
+    EDINET自己開示の比率（グループA）を優先し、開示がない指標のみTBL-003
+    company_quantitative_factsの生データから計算する（グループB・C）。API-COM-002と
+    同じ理由で、有価証券報告書（docTypeCode: 120）由来のデータのみを対象とする。
   operationId: getCompanyRatios
   parameters:
     - name: code

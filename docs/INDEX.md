@@ -24,7 +24,9 @@ docs/
 ├── design/                               ← 設計
 │   ├── self_review_rule.md
 │   ├── design_guideline.md               ← 本番デザインコンセプト（配色・タイポグラフィ等、常に最終断面のみ）
-│   ├── cycle1,3,4,5,6,7,8,9,10,11,12,13_design.md / _review.md
+│   │   （cycleN_design.mdはサイクル13で廃止・過去分も削除済み。設計の成果物は
+│   │   画面/API/テーブル/バッチの定義書を直接更新する形に統一した。設計セルフ
+│   │   レビューの記録＝cycleN_design_review.mdは今後も作成する）
 │   ├── screen/                           ← 画面定義書（詳細：screen/screen_list.md）
 │   ├── api/                              ← API設計書（詳細：api/api_list.md、openapi.yaml）
 │   ├── table/                            ← テーブル定義書（詳細：table/table_list.md、er_diagram.md）

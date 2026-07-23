@@ -2,15 +2,15 @@ get:
   x-api-id: API-COM-002
   summary: 企業財務データ取得
   description: |
-    指定した証券コードの企業の財務データ（売上高・営業利益・純利益・総資産・負債合計の5指標、
-    サイクル1と同じ形）を返す。データソースはTBL-003 facts（サイクル2）だが、レスポンス形は
-    サイクル1から変えていない（画面側の変更を最小化するため）。
+    指定した証券コードの企業の財務データ（売上高・営業利益・経常利益・純利益・総資産・
+    負債合計・自己資本の7指標。経常利益・自己資本はサイクル3で追加）を返す。
+    データソースはTBL-003 company_quantitative_facts（サイクル2で新設、サイクル13で
+    facts→company_quantitative_factsに命名是正）。
     サーバー側は、企業のcompanies.accounting_standardに応じた会計基準別の
     element_idマッピング（xbrl_parser.pyの各パーサーが持つマッピングと同じもの）を使って、
-    factsテーブルから5指標を引き当てる。
-    FR-08により半期報告書（docTypeCode: 160）由来のfactsも保存されるが、本APIは
-    年次比較グラフ用のため有価証券報告書（docTypeCode: 120）のみを対象とする
-    （半期データはAPI-COM-004経由でSCR-004から参照する）。
+    company_quantitative_factsテーブルから7指標を引き当てる。
+    FR-08により半期報告書（docTypeCode: 160）由来のデータも保存されるが、本APIは
+    年次比較グラフ用のため有価証券報告書（docTypeCode: 120）のみを対象とする。
   operationId: getCompanyFinancials
   parameters:
     - name: code

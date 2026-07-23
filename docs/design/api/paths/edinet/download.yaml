@@ -10,6 +10,11 @@ post:
 
     書類の探索起点日はサーバー内部でEDINETコードリストの「決算日」から動的に算出する
     （FR-09参照）。決算日はリクエスト・レスポンスどちらにも含めない（サーバー内部の実装詳細）。
+
+    サイクル13（FR-60）で、取得した書類のcompany_quantitative_facts保存に加えて、
+    company_qualitative_facts（事業の内容・リスク等）の保存と、documentsテーブルの
+    レコード作成/更新・body_ingested_at設定も行うようになった（書類一覧の日次取り込み・
+    書類本体の一括取り込みバッチと共通のupsert_document_from_rowを使う）。
   operationId: startDownload
   requestBody:
     required: true
