@@ -74,4 +74,4 @@
 | IDEA-11 | 生成AIとの連携（レポートQA機能） | ビジネス | 未定 | IDEA-07の後 | [IDEA-11_ai_report_qa.md](IDEA-11_ai_report_qa.md) |
 | IDEA-12 | 株価確認機能 | エンジニアリング | 未定 | 未定 | [IDEA-12_stock_price_check.md](IDEA-12_stock_price_check.md) |
 | IDEA-13 | ユースケース設計 | プロダクト/UX | 未定 | サイクル12（IDEA-14の後） | [IDEA-13_use_case_design.md](IDEA-13_use_case_design.md) |
-| IDEA-14 | アプリのビジネスコンセプト決定 | ビジネス | 高 | サイクル11で着手 | [IDEA-14_business_concept_definition.md](IDEA-14_business_concept_definition.md) |
+| IDEA-14 | アプリのビジネスコンセプト決定 | ビジネス | 高 | 完了（サイクル11） | [IDEA-14_business_concept_definition.md](IDEA-14_business_concept_definition.md) |

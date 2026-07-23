@@ -32,7 +32,7 @@ docs/
 │
 ├── development/                          ← 開発
 │   ├── self_review_rule.md
-│   ├── cycle2〜10_development_review.md
+│   ├── cycle2〜11_development_review.md
 │   ├── cycle7_batch_timing_estimate.md   ← 全社展開時の所要時間・データ量見積もり＋サイクル8の再検証結果（旧方式、IDEA-01フェーズ2）
 │   ├── cycle10_db_migration_decision.md  ← SQLite継続／他DB移行の判断（IDEA-01フェーズ6）
 │   ├── backend_implementation_policy.md
@@ -46,7 +46,10 @@ docs/
 │   └── 会計基準/会計基準の基礎知識.md
 │
 ├── ideas/                                ← 検討段階のアイデア（詳細：ideas/README.md）
-│   └── IDEA-01〜13
+│   └── IDEA-01〜14
+│
+├── product/                              ← プロダクトコンセプト
+│   └── concept.md                        ← 想定利用者・提供価値・事業化スタンス（常に最終断面のみ）
 │
 └── external/edinet/                      ← EDINET公式仕様書（PDF）
 ```
@@ -73,10 +76,14 @@ docs/
 | サイクル8 | 書類一覧APIの日付単位キャッシュ導入・再検証（[IDEA-01](ideas/IDEA-01_db_batch_ingestion.md)フェーズ3準備） | 完了 |
 | サイクル9 | 書類一覧・書類本体の取り込み処理を日付ポーリング方式で実装（[IDEA-01](ideas/IDEA-01_db_batch_ingestion.md)フェーズ3・4） | 完了 |
 | サイクル10 | データ量・並行アクセスパターンをもとにDB移行判断（[IDEA-01](ideas/IDEA-01_db_batch_ingestion.md)フェーズ6） | 完了 |
-| 次サイクル | 未定。[ideas/README.md](ideas/README.md)・[requirements/cycleX_backlog.md](requirements/cycleX_backlog.md)から検討 | 企画待ち |
+| サイクル11 | アプリのビジネスコンセプト決定（[IDEA-14](ideas/IDEA-14_business_concept_definition.md)、[product/concept.md](product/concept.md)） | 完了 |
+| サイクル12 | ユースケース設計（[IDEA-13](ideas/IDEA-13_use_case_design.md)） | 企画待ち |
 
 現時点で残っている大きな論点：
-- アプリのコンセプト・想定利用者が未決定（[ideas/IDEA-10](ideas/IDEA-10_report_purpose_redesign.md)・[IDEA-13](ideas/IDEA-13_use_case_design.md)がこれ待ち）
+- アプリのコンセプトはサイクル11で決定済み（[product/concept.md](product/concept.md)）。
+  これを前提にサイクル12でユースケース設計（[IDEA-13](ideas/IDEA-13_use_case_design.md)）
+  に進む。[IDEA-10](ideas/IDEA-10_report_purpose_redesign.md)（レポート表示の再設計）は
+  ユースケース設計の後
 - サイクル9でBATCH-003（書類一覧バックフィル、過去10年分・41,567件を実行済み）・
   BATCH-004（書類本体取り込み、30件サンプルで動作確認済み）を実装した。
   BATCH-004の全社・全件規模での本実行、日次実行の自動化（IDEA-01フェーズ4の完成）は
@@ -98,6 +105,7 @@ docs/
 | APIエンドポイント一覧 | [design/api/api_list.md](design/api/api_list.md) |
 | バッチ処理一覧 | [design/batch/batch_list.md](design/batch/batch_list.md) |
 | デザインのルール（色・フォント・状態表現等） | [design/design_guideline.md](design/design_guideline.md) |
+| アプリのコンセプト（想定利用者・提供価値・事業化スタンス） | [product/concept.md](product/concept.md) |
 | まだ検討中のアイデア | [ideas/README.md](ideas/README.md) |
 | 「やる」と決まったが未着手の事項 | [requirements/cycleX_backlog.md](requirements/cycleX_backlog.md) |
 | 会計・EDINETのドメイン知識 | [domain/](domain/) |
