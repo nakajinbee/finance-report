@@ -32,7 +32,7 @@ docs/
 │
 ├── development/                          ← 開発
 │   ├── self_review_rule.md
-│   ├── cycle2〜11_development_review.md
+│   ├── cycle2〜12_development_review.md
 │   ├── cycle7_batch_timing_estimate.md   ← 全社展開時の所要時間・データ量見積もり＋サイクル8の再検証結果（旧方式、IDEA-01フェーズ2）
 │   ├── cycle10_db_migration_decision.md  ← SQLite継続／他DB移行の判断（IDEA-01フェーズ6）
 │   ├── backend_implementation_policy.md
@@ -49,7 +49,8 @@ docs/
 │   └── IDEA-01〜14
 │
 ├── product/                              ← プロダクトコンセプト
-│   └── concept.md                        ← 想定利用者・提供価値・事業化スタンス（常に最終断面のみ）
+│   ├── concept.md                        ← 想定利用者・提供価値・事業化スタンス（常に最終断面のみ）
+│   └── use_cases.md                      ← ユースケース一覧（大項目/中項目/小項目、UC-x-xで参照。常に最終断面のみ）
 │
 └── external/edinet/                      ← EDINET公式仕様書（PDF）
 ```
@@ -77,13 +78,18 @@ docs/
 | サイクル9 | 書類一覧・書類本体の取り込み処理を日付ポーリング方式で実装（[IDEA-01](ideas/IDEA-01_db_batch_ingestion.md)フェーズ3・4） | 完了 |
 | サイクル10 | データ量・並行アクセスパターンをもとにDB移行判断（[IDEA-01](ideas/IDEA-01_db_batch_ingestion.md)フェーズ6） | 完了 |
 | サイクル11 | アプリのビジネスコンセプト決定（[IDEA-14](ideas/IDEA-14_business_concept_definition.md)、[product/concept.md](product/concept.md)） | 完了 |
-| サイクル12 | ユースケース設計（[IDEA-13](ideas/IDEA-13_use_case_design.md)） | 企画待ち |
+| サイクル12 | ユースケース設計（[IDEA-13](ideas/IDEA-13_use_case_design.md)、[product/use_cases.md](product/use_cases.md)） | 完了 |
+| 次サイクル | 未定。`use_cases.md`のUC-x-xから、画面フロー→画面→API→バッチの順で1件ずつ着手 | 企画待ち |
 
 現時点で残っている大きな論点：
-- アプリのコンセプトはサイクル11で決定済み（[product/concept.md](product/concept.md)）。
-  これを前提にサイクル12でユースケース設計（[IDEA-13](ideas/IDEA-13_use_case_design.md)）
-  に進む。[IDEA-10](ideas/IDEA-10_report_purpose_redesign.md)（レポート表示の再設計）は
-  ユースケース設計の後
+- アプリのコンセプト（サイクル11）・ユースケース一覧（サイクル12）がいずれも確定した。
+  以降のサイクルは`docs/product/use_cases.md`のユースケース単位（UC-x-x）で機能を
+  設計・実装する（[cycle-workflow](../.claude/skills/cycle-workflow/SKILL.md)参照）。
+  [IDEA-10](ideas/IDEA-10_report_purpose_redesign.md)（画面の再設計）は各ユースケース
+  実装サイクルの「画面の整理」ステップに組み込まれる想定
+- `use_cases.md`のUC-1-5・UC-3-4・UC-3-5は株価データ取得基盤（未着手、
+  [IDEA-12](ideas/IDEA-12_stock_price_check.md)が関連）に依存し、UC-3-3はUC-1-4
+  （定点観測）に依存するため、着手順序を検討する際は注意する
 - サイクル9でBATCH-003（書類一覧バックフィル、過去10年分・41,567件を実行済み）・
   BATCH-004（書類本体取り込み、30件サンプルで動作確認済み）を実装した。
   BATCH-004の全社・全件規模での本実行、日次実行の自動化（IDEA-01フェーズ4の完成）は
@@ -106,6 +112,7 @@ docs/
 | バッチ処理一覧 | [design/batch/batch_list.md](design/batch/batch_list.md) |
 | デザインのルール（色・フォント・状態表現等） | [design/design_guideline.md](design/design_guideline.md) |
 | アプリのコンセプト（想定利用者・提供価値・事業化スタンス） | [product/concept.md](product/concept.md) |
+| ユースケース一覧（UC-x-x、以降のサイクルの着手単位） | [product/use_cases.md](product/use_cases.md) |
 | まだ検討中のアイデア | [ideas/README.md](ideas/README.md) |
 | 「やる」と決まったが未着手の事項 | [requirements/cycleX_backlog.md](requirements/cycleX_backlog.md) |
 | 会計・EDINETのドメイン知識 | [domain/](domain/) |
