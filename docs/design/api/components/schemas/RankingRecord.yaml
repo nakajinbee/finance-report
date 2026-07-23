@@ -1,0 +1,22 @@
+type: object
+description: FR-67。ランキングAPIの1社分のレコード（最新期の指標値）
+properties:
+  code:
+    type: string
+    example: '7203'
+  name:
+    type: string
+    example: トヨタ自動車株式会社
+  sector:
+    type: string
+    nullable: true
+    example: 輸送用機器
+  period_end:
+    type: string
+    format: date
+    description: 値の算出に使った最新期の決算期末日
+    example: '2026-03-31'
+  value:
+    type: number
+    description: リクエストされた`metric`に対応する値
+    example: 45100000000000

@@ -2,8 +2,11 @@ import { useEffect, useState } from "react";
 import { Navigate, Route, BrowserRouter as Router, Routes } from "react-router-dom";
 import { getCompanies } from "./api/client";
 import { Layout } from "./components/layout/Layout";
+import { CompanyComparisonResultPage } from "./pages/CompanyComparisonResultPage";
+import { CompanyComparisonSelectPage } from "./pages/CompanyComparisonSelectPage";
 import { CompanyDetailPage } from "./pages/CompanyDetailPage";
 import { CompanyListPage } from "./pages/CompanyListPage";
+import { CompanyRankingPage } from "./pages/CompanyRankingPage";
 import { DownloadPage } from "./pages/DownloadPage";
 
 // 起動時：DBが空なら/downloadへ、データがあれば/companiesへリダイレクトする(SCR-001「初期遷移」)
@@ -31,6 +34,9 @@ function App() {
           <Route path="/download" element={<DownloadPage />} />
           <Route path="/companies" element={<CompanyListPage />} />
           <Route path="/companies/:code" element={<CompanyDetailPage />} />
+          <Route path="/compare" element={<CompanyComparisonSelectPage />} />
+          <Route path="/compare/result" element={<CompanyComparisonResultPage />} />
+          <Route path="/ranking" element={<CompanyRankingPage />} />
         </Route>
       </Routes>
     </Router>

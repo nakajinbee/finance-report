@@ -7,10 +7,13 @@ import { ALL_SECTORS, useCompanyFilter, type SortOrder } from "../lib/useCompany
 
 type LoadState = "loading" | "loaded" | "error";
 
-export function CompanyListPage() {
+// SCR-005 比較企業選択画面（サイクル15新規）。SCR-002と同じ検索・絞り込みUXを流用するが、
+// カードのクリックは詳細画面への遷移ではなく比較対象への選択・解除として扱う。
+export function CompanyComparisonSelectPage() {
   const navigate = useNavigate();
   const [companies, setCompanies] = useState<Company[]>([]);
   const [loadState, setLoadState] = useState<LoadState>("loading");
+  const [selected, setSelected] = useState<Company[]>([]);
   const {
     keyword,
     setKeyword,
@@ -41,12 +44,26 @@ export function CompanyListPage() {
     };
   }, []);
 
+  function toggleSelection(company: Company) {
+    setSelected((current) => {
+      if (current.some((c) => c.code === company.code)) {
+        return current.filter((c) => c.code !== company.code);
+      }
+      return [...current, company];
+    });
+  }
+
+  function removeSelection(code: string) {
+    setSelected((current) => current.filter((c) => c.code !== code));
+  }
+
+  function goToCompare() {
+    const codes = selected.map((c) => c.code).join(",");
+    navigate(`/compare/result?codes=${encodeURIComponent(codes)}`);
+  }
+
   if (loadState === "loading") {
-    return (
-      <div className="flex justify-center py-16 text-gray-500">
-        読み込み中...
-      </div>
-    );
+    return <div className="flex justify-center py-16 text-gray-500">読み込み中...</div>;
   }
 
   if (loadState === "error") {
@@ -70,7 +87,7 @@ export function CompanyListPage() {
 
   return (
     <div className="mx-auto max-w-2xl space-y-4 p-8">
-      <h1 className="text-xl font-semibold">企業一覧</h1>
+      <h1 className="text-xl font-semibold">比較する企業を選ぶ</h1>
 
       <input
         type="text"
@@ -106,43 +123,69 @@ export function CompanyListPage() {
         </select>
       </div>
 
+      {selected.length > 0 && (
+        <div className="space-y-2 rounded-lg border border-gray-200 bg-gray-50 p-4">
+          <p className="text-sm font-medium text-gray-900">選択中の企業（{selected.length}）</p>
+          <ul className="space-y-1">
+            {selected.map((company) => (
+              <li key={company.code} className="flex items-center justify-between text-sm">
+                <span>
+                  {company.name}（{company.code}）
+                </span>
+                <button
+                  type="button"
+                  onClick={() => removeSelection(company.code)}
+                  className="text-gray-400 hover:text-gray-600"
+                  aria-label={`${company.name}を選択から外す`}
+                >
+                  ×
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      <Button variant="primary" disabled={selected.length === 0} onClick={goToCompare}>
+        比較する
+      </Button>
+
       {!hasFilter ? (
         <p className="text-sm text-gray-500">
           企業名・証券コードで検索するか、業種を選択してください
         </p>
+      ) : filteredCompanies.length === 0 ? (
+        <p>&quot;{keyword}&quot; に一致する企業が見つかりませんでした</p>
       ) : (
-        <>
-          <p className="text-sm text-gray-500">
-            {companies.length}件中 {filteredCompanies.length}件表示
-          </p>
-
-          {filteredCompanies.length === 0 ? (
-            <p>&quot;{keyword}&quot; に一致する企業が見つかりませんでした</p>
-          ) : (
-            <ul className="grid grid-cols-1 gap-3 xl:grid-cols-2">
-              {filteredCompanies.map((company) => (
-                <li key={company.code}>
-                  <button
-                    type="button"
-                    onClick={() => navigate(`/companies/${company.code}`)}
-                    className="w-full rounded-lg border border-gray-200 bg-white p-4 text-left shadow-sm hover:bg-gray-50"
-                  >
-                    <p className="font-medium">{company.name}</p>
-                    <p className="text-sm text-gray-500">
-                      {company.code} ｜ {company.sector ?? "業種不明"} ｜{" "}
-                      {company.accounting_standard ?? "データ未取得"}
-                    </p>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </>
+        <ul className="grid grid-cols-1 gap-3 xl:grid-cols-2">
+          {filteredCompanies.map((company) => {
+            const isSelected = selected.some((c) => c.code === company.code);
+            return (
+              <li key={company.code}>
+                <button
+                  type="button"
+                  onClick={() => toggleSelection(company)}
+                  className={`w-full rounded-lg border p-4 text-left shadow-sm ${
+                    isSelected
+                      ? "border-brand bg-brand-tint"
+                      : "border-gray-200 bg-white hover:bg-gray-50"
+                  }`}
+                >
+                  <p className="font-medium">
+                    {isSelected ? "✓ " : "+ "}
+                    {company.name}
+                    {isSelected && "（選択済み）"}
+                  </p>
+                  <p className="text-sm text-gray-500">
+                    {company.code} ｜ {company.sector ?? "業種不明"} ｜{" "}
+                    {company.accounting_standard ?? "データ未取得"}
+                  </p>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
       )}
-
-      <Button variant="secondary" onClick={() => navigate("/download")}>
-        データを追加取得する
-      </Button>
     </div>
   );
 }

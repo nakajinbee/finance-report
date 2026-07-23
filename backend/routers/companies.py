@@ -1,4 +1,5 @@
 from datetime import date
+from typing import get_args
 
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
@@ -7,6 +8,18 @@ import edinet_client
 import metric_mappings
 import schemas
 from database import Company, CompanyQualitativeFact, CompanyQuantitativeFact, SessionLocal
+
+# API-COM-007（ランキング）が対象にする指標のうち、財務諸表（FinancialRecord）由来のもの。
+# それ以外はすべて財務分析指標（RatioRecord）由来（サイクル15 FR-67）。
+_RANKING_FINANCIAL_METRICS = {
+    "revenue",
+    "operating_profit",
+    "ordinary_profit",
+    "net_profit",
+    "total_assets",
+    "total_liabilities",
+    "equity",
+}
 
 # SCR-002（企業一覧画面）・SCR-003（企業詳細画面）・SCR-004（保存済みデータ確認画面、
 # docs/design/screen/配下）向けのAPI-COM-*系エンドポイント。DBのみを参照し、EDINETには
@@ -401,5 +414,64 @@ def get_company_qualitative_facts(code: str, period_end: date | None = None):
                 "jpcrp_cor:ManagementAnalysisOfFinancialPositionOperatingResultsAndCashFlowsTextBlock"
             ),
         )
+    finally:
+        session.close()
+
+
+@router.get("/companies/ranking", response_model=list[schemas.RankingRecord])
+def get_company_ranking(metric: str, sector: str | None = None):
+    """API-COM-007: 指定した指標について全企業（または業種内）の最新期の値をランキング形式で返す（サイクル15新規、FR-67）"""
+    if metric not in get_args(schemas.RankingMetric):
+        return JSONResponse(
+            status_code=400,
+            content=schemas.ErrorResponse(
+                error="INVALID_METRIC", message="metricの指定が不正です"
+            ).model_dump(),
+        )
+
+    session = SessionLocal()
+    try:
+        query = session.query(Company)
+        if sector is not None:
+            query = query.filter(Company.sector == sector)
+        companies = query.all()
+
+        is_financial_metric = metric in _RANKING_FINANCIAL_METRICS
+
+        results: list[schemas.RankingRecord] = []
+        for company in companies:
+            quantitative_facts = (
+                session.query(CompanyQuantitativeFact)
+                .filter_by(company_code=company.code, doc_type_code=edinet_client.DOC_TYPE_CODE_ANNUAL_REPORT)
+                .order_by(CompanyQuantitativeFact.period_end)
+                .all()
+            )
+            if not quantitative_facts:
+                continue
+
+            if is_financial_metric:
+                records = _build_financial_records(quantitative_facts, company.accounting_standard)
+            else:
+                records = _build_ratio_records(quantitative_facts, company.accounting_standard)
+            if not records:
+                continue
+
+            latest = records[-1]
+            value = getattr(latest, metric)
+            if value is None:
+                continue
+
+            results.append(
+                schemas.RankingRecord(
+                    code=company.code,
+                    name=company.name,
+                    sector=company.sector,
+                    period_end=latest.period_end,
+                    value=float(value),
+                )
+            )
+
+        results.sort(key=lambda r: r.value, reverse=True)
+        return results
     finally:
         session.close()

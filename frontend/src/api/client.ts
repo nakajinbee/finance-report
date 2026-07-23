@@ -57,6 +57,35 @@ export type RatioRecord = {
   inventories: number | null;
 };
 
+export type RankingMetric =
+  | "revenue"
+  | "operating_profit"
+  | "ordinary_profit"
+  | "net_profit"
+  | "total_assets"
+  | "total_liabilities"
+  | "equity"
+  | "roe"
+  | "equity_ratio"
+  | "eps"
+  | "per"
+  | "payout_ratio"
+  | "roa"
+  | "total_asset_turnover"
+  | "operating_margin"
+  | "net_margin"
+  | "current_ratio"
+  | "fixed_ratio"
+  | "inventory_turnover";
+
+export type RankingRecord = {
+  code: string;
+  name: string;
+  sector: string | null;
+  period_end: string;
+  value: number;
+};
+
 export type CompanyQualitativeFacts = {
   period_end: string;
   available_periods: string[];
@@ -181,4 +210,12 @@ export function getCompanyQualitativeFacts(
   periodEnd?: string,
 ): Promise<ApiResult<CompanyQualitativeFacts>> {
   return requestJson(`/api/companies/${code}/qualitative-facts${buildQuery({ period_end: periodEnd })}`);
+}
+
+// API-COM-007: 企業ランキング取得（サイクル15新規）
+export function getCompanyRanking(
+  metric: RankingMetric,
+  sector?: string,
+): Promise<ApiResult<RankingRecord[]>> {
+  return requestJson(`/api/companies/ranking${buildQuery({ metric, sector })}`);
 }

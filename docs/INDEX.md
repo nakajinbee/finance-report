@@ -83,12 +83,15 @@ docs/
 | サイクル11 | アプリのビジネスコンセプト決定（[IDEA-14](ideas/IDEA-14_business_concept_definition.md)、[product/concept.md](product/concept.md)） | 完了 |
 | サイクル12 | ユースケース設計（[IDEA-13](ideas/IDEA-13_use_case_design.md)、[product/use_cases.md](product/use_cases.md)） | 完了 |
 | サイクル13 | UC-1-1（特定企業の深掘り調査）実装。定性データ（事業概要・リスク）の追加、`facts`→`company_quantitative_facts`等の命名是正、個別ダウンロード機能とdocumentsテーブルの不整合是正 | 完了 |
-| 次サイクル | 未定。`use_cases.md`のUC-1-2・UC-1-3等から、画面フロー→画面→API→バッチの順で1件ずつ着手 | 企画待ち |
+| サイクル14 | ヘッダー背景色をブランドカラーに戻す（FR-61）。企業一覧画面（SCR-002）を全件初期表示から検索・業種絞り込み時のみ表示に変更し、業種絞り込み・並び順を追加（FR-62〜64） | 完了 |
+| サイクル15 | UC-1-2（複数企業の比較）実装。比較企業選択画面（SCR-005）・比較結果画面（SCR-006）・ランキング画面（SCR-007）・ランキングAPI（API-COM-007）を新規追加（FR-65〜69） | 完了 |
+| 次サイクル | 未定。`use_cases.md`のUC-1-3等から、画面フロー→画面→API→バッチの順で1件ずつ着手 | 企画待ち |
 
 現時点で残っている大きな論点：
 - アプリのコンセプト（サイクル11）・ユースケース一覧（サイクル12）がいずれも確定し、
-  サイクル13でUC-1-1（特定企業の深掘り調査）を実装した。以降のサイクルも
-  `docs/product/use_cases.md`のユースケース単位（UC-x-x）で機能を設計・実装する
+  サイクル13でUC-1-1（特定企業の深掘り調査）、サイクル15でUC-1-2（複数企業の比較）を
+  実装した。以降のサイクルも`docs/product/use_cases.md`のユースケース単位（UC-x-x）
+  で機能を設計・実装する
   （[cycle-workflow](../.claude/skills/cycle-workflow/SKILL.md)参照）。
   [IDEA-10](ideas/IDEA-10_report_purpose_redesign.md)（画面の再設計）は各ユースケース
   実装サイクルの「画面の整理」ステップに組み込まれる想定

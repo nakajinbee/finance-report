@@ -131,6 +131,39 @@ class RatioRecord(BaseModel):
     inventories: int | None = None
 
 
+RankingMetric = Literal[
+    "revenue",
+    "operating_profit",
+    "ordinary_profit",
+    "net_profit",
+    "total_assets",
+    "total_liabilities",
+    "equity",
+    "roe",
+    "equity_ratio",
+    "eps",
+    "per",
+    "payout_ratio",
+    "roa",
+    "total_asset_turnover",
+    "operating_margin",
+    "net_margin",
+    "current_ratio",
+    "fixed_ratio",
+    "inventory_turnover",
+]
+
+
+class RankingRecord(BaseModel):
+    """docs/design/api/components/schemas/RankingRecord.yaml（サイクル15新規、FR-67、SCR-007向け）"""
+
+    code: str
+    name: str
+    sector: str | None = None
+    period_end: date
+    value: float
+
+
 class CompanyQualitativeFacts(BaseModel):
     """docs/design/api/components/schemas/CompanyQualitativeFacts.yaml（サイクル13新規、FR-58、SCR-003向け）"""
 

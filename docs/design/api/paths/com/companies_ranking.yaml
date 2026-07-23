@@ -1,0 +1,69 @@
+get:
+  x-api-id: API-COM-007
+  summary: 企業ランキング取得
+  description: |
+    指定した指標（財務諸表7項目または財務分析指標12項目のいずれか1つ）について、
+    企業ごとの最新期の値を計算し、値が算出できた企業のみを返す（FR-67、
+    サイクル15・UC-1-2-2）。`sector`を指定した場合はその業種の企業のみを対象にする。
+
+    内部実装は対象企業ごとに`_build_financial_records`・`_build_ratio_records`
+    （API-COM-002・API-COM-005と共通のロジック）を呼び出し、返された配列の
+    最後の要素（最新期）から`metric`に対応する値を取り出す。API-COM-002・
+    API-COM-005と同様、有価証券報告書（docTypeCode: 120）由来のデータのみを対象とする。
+
+    レスポンスは値の降順で返す（昇順表示はフロント側で行う）。
+  operationId: getCompanyRanking
+  parameters:
+    - name: metric
+      in: query
+      required: true
+      schema:
+        type: string
+        enum:
+          - revenue
+          - operating_profit
+          - ordinary_profit
+          - net_profit
+          - total_assets
+          - total_liabilities
+          - equity
+          - roe
+          - equity_ratio
+          - eps
+          - per
+          - payout_ratio
+          - roa
+          - total_asset_turnover
+          - operating_margin
+          - net_margin
+          - current_ratio
+          - fixed_ratio
+          - inventory_turnover
+      example: revenue
+    - name: sector
+      in: query
+      required: false
+      schema:
+        type: string
+        example: 輸送用機器
+  responses:
+    '200':
+      description: ランキングデータ（値の降順）
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              $ref: '../../components/schemas/RankingRecord.yaml'
+    '400':
+      description: metricが不正な値
+      content:
+        application/json:
+          schema:
+            $ref: '../../components/schemas/Error.yaml'
+    '500':
+      description: サーバーエラー
+      content:
+        application/json:
+          schema:
+            $ref: '../../components/schemas/Error.yaml'

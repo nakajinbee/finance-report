@@ -169,8 +169,20 @@ export function CompanyDetailPage() {
       <div>
         <h1 className="text-xl font-semibold">{financials.company.name}</h1>
         <p className="text-gray-500">
-          会計基準：{financials.company.accounting_standard ?? "データ未取得"}
+          会計基準：{financials.company.accounting_standard ?? "データ未取得"} ｜{" "}
+          {financials.company.sector ?? "業種不明"}
         </p>
+        {financials.company.sector !== null && (
+          <button
+            type="button"
+            onClick={() =>
+              navigate(`/ranking?sector=${encodeURIComponent(financials.company.sector ?? "")}`)
+            }
+            className="text-sm text-brand hover:text-brand-dark"
+          >
+            この企業の業種内での順位を見る →
+          </button>
+        )}
       </div>
 
       {availableYears.length > 0 && fromYear !== null && toYear !== null && (

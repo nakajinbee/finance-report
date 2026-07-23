@@ -31,6 +31,7 @@ IDは2グループに分ける。
 | 3 | API-COM-003 | GET | `/api/companies/{code}/cashflow?from_year=&to_year=` | 指定企業のキャッシュフロー（3項目）を返す（サイクル2新規、FR-13） | `paths/com/companies_code_cashflow.yaml` |
 | 4 | API-COM-005 | GET | `/api/companies/{code}/ratios?from_year=&to_year=` | 指定企業の財務分析指標（ROE・流動比率等）を返す（サイクル3新規、FR-23〜26） | `paths/com/companies_code_ratios.yaml` |
 | 5 | API-COM-006 | GET | `/api/companies/{code}/qualitative-facts?period_end=` | 指定企業の定性データ（事業の内容・事業等のリスク・MD&A）を返す（サイクル13新規、FR-58） | `paths/com/companies_code_qualitative_facts.yaml` |
+| 6 | API-COM-007 | GET | `/api/companies/ranking?metric=&sector=` | 指定した指標について全企業（または業種内）の最新期の値をランキング形式で返す（サイクル15新規、FR-67。SCR-007ランキング画面が使用） | `paths/com/companies_ranking.yaml` |
 
 廃止：API-COM-004（`GET /api/companies/{code}/facts`、旧SCR-004向け）はサイクル13で
 SCR-004削除に伴い削除した。
@@ -44,3 +45,6 @@ SCR-004削除に伴い削除した。
 | SCR-001 | ダウンロード画面 | API-EDN-001, API-EDN-002, API-EDN-003 |
 | SCR-002 | 企業一覧画面 | API-COM-001 |
 | SCR-003 | 企業詳細画面 | API-COM-002, API-COM-003, API-COM-005, API-COM-006 |
+| SCR-005 | 比較企業選択画面 | API-COM-001 |
+| SCR-006 | 比較結果画面 | API-COM-002, API-COM-003, API-COM-005 |
+| SCR-007 | ランキング画面 | API-COM-001（業種絞り込みの選択肢生成）, API-COM-007 |
